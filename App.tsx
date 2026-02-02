@@ -94,6 +94,8 @@ function App() {
   const [paymentReturn, setPaymentReturn] = useState<'success' | 'failure' | null>(null);
   const trialIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
+  /** Só redirecionar para Home uma vez ao obter acesso; não redirecionar de novo ao navegar. */
+  const hasScrolledToHomeRef = useRef(false);
   /** Tempo restante do trial em segundos para exibir no cronômetro (atualiza a cada 1s, sincroniza com o servidor a cada 15s). */
   const [trialDisplayRemainingSeconds, setTrialDisplayRemainingSeconds] = useState(0);
 
@@ -244,15 +246,20 @@ function App() {
     return () => clearInterval(id);
   }, [isTrialActive, profile?.trial_seconds_used, TRIAL_SECONDS_LIMIT]);
 
-  // Após login, redirecionar para a tela Home (slide 1); Planos ficam à esquerda (slide 0)
+  // Ao obter acesso (login), redirecionar para Home uma vez; não redirecionar de novo ao navegar
   useEffect(() => {
-    if (!userId || accessStatus !== 'allowed') return;
+    if (!userId) {
+      hasScrolledToHomeRef.current = false;
+      return;
+    }
+    if (accessStatus !== 'allowed' || hasScrolledToHomeRef.current) return;
     const scrollToHome = () => {
       const el = carouselRef.current;
       if (!el) return false;
       const slideWidth = el.offsetWidth || el.clientWidth;
       if (slideWidth > 0) {
         el.scrollLeft = slideWidth;
+        hasScrolledToHomeRef.current = true;
         return true;
       }
       return false;
@@ -1888,15 +1895,7 @@ function App() {
 
       {/* Carrossel: slide 0 = Planos, slide 1 = Home, slide 2 = Jejum. Inicia na Home. */}
       <div
-        ref={(el) => {
-          (carouselRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
-          if (el && userId && accessStatus === 'allowed') {
-            requestAnimationFrame(() => {
-              const w = el.offsetWidth || el.clientWidth;
-              if (w > 0) el.scrollLeft = w;
-            });
-          }
-        }}
+        ref={carouselRef}
         className="flex-1 min-h-0 w-full overflow-x-auto overflow-y-hidden flex snap-x snap-mandatory scroll-smooth touch-pan-x"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
