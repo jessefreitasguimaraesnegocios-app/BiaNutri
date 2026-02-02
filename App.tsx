@@ -244,16 +244,25 @@ function App() {
     return () => clearInterval(id);
   }, [isTrialActive, profile?.trial_seconds_used, TRIAL_SECONDS_LIMIT]);
 
-  // Após login, ir para a tela Home (segunda slide); Planos ficam à esquerda
+  // Após login, redirecionar para a tela Home (slide 1); Planos ficam à esquerda (slide 0)
   useEffect(() => {
     if (!userId || accessStatus !== 'allowed') return;
-    const el = carouselRef.current;
-    if (!el) return;
-    const t = setTimeout(() => {
+    const scrollToHome = () => {
+      const el = carouselRef.current;
+      if (!el) return false;
       const slideWidth = el.offsetWidth || el.clientWidth;
-      if (slideWidth > 0) el.scrollLeft = slideWidth;
-    }, 150);
-    return () => clearTimeout(t);
+      if (slideWidth > 0) {
+        el.scrollLeft = slideWidth;
+        return true;
+      }
+      return false;
+    };
+    const t1 = setTimeout(() => requestAnimationFrame(() => scrollToHome()), 100);
+    const t2 = setTimeout(() => requestAnimationFrame(() => scrollToHome()), 400);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, [userId, accessStatus]);
 
   // Carregar apenas dados do usuário atual (chave com userId). Sem fallback em chave legada para não misturar dados entre usuários.
@@ -1879,7 +1888,15 @@ function App() {
 
       {/* Carrossel: slide 0 = Planos, slide 1 = Home, slide 2 = Jejum. Inicia na Home. */}
       <div
-        ref={carouselRef}
+        ref={(el) => {
+          (carouselRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+          if (el && userId && accessStatus === 'allowed') {
+            requestAnimationFrame(() => {
+              const w = el.offsetWidth || el.clientWidth;
+              if (w > 0) el.scrollLeft = w;
+            });
+          }
+        }}
         className="flex-1 min-h-0 w-full overflow-x-auto overflow-y-hidden flex snap-x snap-mandatory scroll-smooth touch-pan-x"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
