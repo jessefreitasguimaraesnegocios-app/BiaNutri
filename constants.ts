@@ -103,7 +103,7 @@ export const COLOR_PALETTES: Record<string, ColorPalette> = {
 
 export const TRANSLATIONS: Record<string, Translation> = {
   en: {
-    title: 'Smart_Nutri',
+    title: 'BiaNutri',
     subtitle: 'Smart Nutrition',
     scanButton: 'Scan Food',
     uploadButton: 'Upload Photo',
@@ -200,7 +200,7 @@ export const TRANSLATIONS: Record<string, Translation> = {
     waterStats: 'Water Stats',
   },
   pt: {
-    title: 'Smart_Nutri',
+    title: 'BiaNutri',
     subtitle: 'Nutrição Inteligente',
     scanButton: 'Escanear Alimento',
     uploadButton: 'Carregar Foto',

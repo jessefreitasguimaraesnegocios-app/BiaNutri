@@ -45,7 +45,7 @@ const NutritionChart: React.FC<NutritionChartProps> = ({ data, lang }) => {
         </PieChart>
       </ResponsiveContainer>
 
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none -translate-y-3">
         <div className="text-center">
           <span className="block text-3xl font-bold text-slate-800 dark:text-white">{data.calories}</span>
           <span className="text-xs text-slate-500 dark:text-slate-400 font-uppercase tracking-wider">KCAL</span>
