@@ -1907,9 +1907,6 @@ function App() {
 
         {/* Slide 1 (centro): Home (trial strip + conteúdo principal) */}
         <div className="flex-shrink-0 w-full min-w-full snap-start flex flex-col overflow-y-auto">
-          <p className="text-center text-xs text-slate-400 dark:text-slate-500 py-1 px-2 flex-shrink-0">
-            {lang === 'pt' ? '← Planos | → Jejum' : '← Plans | → Fasting'}
-          </p>
           {isTrialActive && (
             <div className="max-w-md mx-auto px-4 pt-1 pb-2 flex-shrink-0">
               <div className="rounded-xl bg-brand-500/15 dark:bg-brand-500/20 border border-brand-500/30 px-3 py-2.5">
@@ -1944,8 +1941,8 @@ function App() {
             {view === 'dayDetails' && renderDayDetails()}
             {view === 'todayFoods' && renderTodayFoods()}
           </main>
-          <p className="text-center text-xs text-slate-400 dark:text-slate-500 py-1 px-2 flex-shrink-0">
-            {lang === 'pt' ? '→ Deslize para a direita para ver jejum' : '→ Swipe right to see fasting'}
+          <p className="text-center text-xs text-slate-400 dark:text-slate-500 py-1 px-2 flex-shrink-0 mt-auto">
+            {lang === 'pt' ? '← Planos | Jejum →' : '← Plans | Fasting →'}
           </p>
         </div>
 

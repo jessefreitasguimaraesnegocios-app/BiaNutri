@@ -82,6 +82,13 @@ export function getTrialStatusFromProfile(profile: {
   return 'none';
 }
 
+/** Obtém headers com JWT da sessão para Edge Functions. */
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) return {};
+  return { Authorization: `Bearer ${session.access_token}` };
+}
+
 /** Inicia o trial (backend valida telefone e se já foi usado). */
 export async function startTrial(userId: string): Promise<{
   ok: boolean;
@@ -89,8 +96,10 @@ export async function startTrial(userId: string): Promise<{
   trial_seconds_used?: number;
   trial_used_at?: string | null;
 }> {
+  const headers = await getAuthHeaders();
   const { data, error } = await supabase.functions.invoke(TRIAL_FUNCTION, {
     body: { action: 'start', user_id: userId },
+    headers: Object.keys(headers).length ? headers : undefined,
   });
   if (error) return { ok: false, error: error.message };
   const body = data as any;
@@ -112,8 +121,10 @@ export async function incrementTrialTime(
   trial_used_at: string | null;
   exhausted: boolean;
 }> {
+  const headers = await getAuthHeaders();
   const { data, error } = await supabase.functions.invoke(TRIAL_FUNCTION, {
     body: { action: 'increment', user_id: userId, seconds },
+    headers: Object.keys(headers).length ? headers : undefined,
   });
   if (error) {
     return {
@@ -177,6 +188,7 @@ export async function createCheckout(
   successUrl: string,
   failureUrl: string
 ): Promise<{ init_point?: string; error?: string }> {
+  const headers = await getAuthHeaders();
   const { data, error } = await supabase.functions.invoke(MERCADOPAGO_FUNCTION, {
     body: {
       user_id: userId,
@@ -184,6 +196,7 @@ export async function createCheckout(
       success_url: successUrl,
       failure_url: failureUrl,
     },
+    headers: Object.keys(headers).length ? headers : undefined,
   });
   if (error) return { error: error.message };
   const body = data as any;

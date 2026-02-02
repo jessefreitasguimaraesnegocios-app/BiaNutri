@@ -161,43 +161,60 @@ const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
                   {t.bestValue}
                 </div>
               )}
-              <div className="p-5">
+              <div className={featured ? 'p-6' : 'p-5'}>
                 <div className="flex items-baseline justify-between gap-2 mb-1">
                   <span
-                    className={`font-bold ${
+                    className={`font-bold ${featured ? 'text-base' : ''} ${
                       featured ? 'text-brand-700 dark:text-brand-300' : isDark ? 'text-white' : 'text-slate-900'
                     }`}
                   >
                     {plan.labelShort}
                   </span>
                   <div className="text-right">
-                    {plan.durationMonths > 1 && (
-                      <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                        R$ {plan.pricePerMonth.toFixed(2).replace('.', ',')}
-                        {t.perMonth}
-                      </span>
+                    {featured ? (
+                      <>
+                        <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                          R$ {plan.totalPrice.toFixed(2).replace('.', ',')} {t.total}
+                        </span>
+                        <span
+                          className={`block font-bold ${featured ? 'text-xl' : 'text-lg'} ${
+                            featured ? 'text-brand-600 dark:text-brand-400' : isDark ? 'text-white' : 'text-slate-900'
+                          }`}
+                        >
+                          R$ {plan.pricePerMonth.toFixed(2).replace('.', ',')}{t.perMonth}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        {plan.durationMonths > 1 && (
+                          <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            R$ {plan.pricePerMonth.toFixed(2).replace('.', ',')}
+                            {t.perMonth}
+                          </span>
+                        )}
+                        <span
+                          className={`block font-bold text-lg ${
+                            featured ? 'text-brand-600 dark:text-brand-400' : isDark ? 'text-white' : 'text-slate-900'
+                          }`}
+                        >
+                          R$ {plan.totalPrice.toFixed(2).replace('.', ',')}
+                          {plan.durationMonths > 1 && (
+                            <span className="text-xs font-normal opacity-80"> {t.total}</span>
+                          )}
+                        </span>
+                      </>
                     )}
-                    <span
-                      className={`block font-bold text-lg ${
-                        featured ? 'text-brand-600 dark:text-brand-400' : isDark ? 'text-white' : 'text-slate-900'
-                      }`}
-                    >
-                      R$ {plan.totalPrice.toFixed(2).replace('.', ',')}
-                      {plan.durationMonths > 1 && (
-                        <span className="text-xs font-normal opacity-80"> {t.total}</span>
-                      )}
-                    </span>
                   </div>
                 </div>
                 <button
                   onClick={() => handleSelectPlan(planId)}
                   disabled={!!loadingPlan}
-                  className={`w-full mt-4 py-3.5 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${
+                  className={`w-full mt-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${
                     featured
-                      ? 'bg-brand-500 hover:bg-brand-600 text-white shadow-lg shadow-brand-500/30'
-                      : isDark
+                      ? 'py-4 px-4 text-base bg-brand-500 hover:bg-brand-600 text-white shadow-lg shadow-brand-500/30'
+                      : 'py-3.5 px-4 ' + (isDark
                       ? 'bg-slate-700 hover:bg-slate-600 text-white'
-                      : 'bg-slate-900 hover:bg-slate-800 text-white'
+                      : 'bg-slate-900 hover:bg-slate-800 text-white')
                   } disabled:opacity-60 disabled:cursor-not-allowed`}
                 >
                   {isLoading ? (
@@ -207,8 +224,8 @@ const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
                     </>
                   ) : (
                     <>
-                      <Zap size={18} />
-                      {t.cta} – R$ {plan.totalPrice.toFixed(2).replace('.', ',')}
+                      <Zap size={featured ? 20 : 18} />
+                      {t.cta} – R$ {(featured ? plan.pricePerMonth : plan.totalPrice).toFixed(2).replace('.', ',')}
                     </>
                   )}
                 </button>
