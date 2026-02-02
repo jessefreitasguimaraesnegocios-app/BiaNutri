@@ -44,6 +44,14 @@ export const PLANS: Record<PlanId, PlanOption> = {
 /** Ordem de exibição na paywall: trimestral, anual (destaque), mensal */
 export const PLANS_ORDER: PlanId[] = ['monthly', 'quarterly', 'yearly'];
 
+/** Links diretos do checkout (Mercado Pago – preapproval_plan_id). O webhook avisará quando o pagamento for realizado. */
+export const MONTHLY_PLAN_CHECKOUT_URL =
+  'https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=926ccca97394458e8f88b54d0d64388d';
+export const QUARTERLY_PLAN_CHECKOUT_URL =
+  'https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=3925655a3e1e43c6984ab3d40c1bf771';
+export const YEARLY_PLAN_CHECKOUT_URL =
+  'https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=ef440dc0caf747a8a8c1face5028f644';
+
 /** Duração do teste grátis em minutos – altere aqui para mudar o tempo (ex.: 15, 30, 60). */
 export const TRIAL_MINUTES = 30;
 

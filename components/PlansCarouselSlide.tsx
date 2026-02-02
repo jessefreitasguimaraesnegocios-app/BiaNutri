@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 import { Loader2, Zap, Shield, RefreshCw } from 'lucide-react';
-import { PLANS, PLANS_ORDER, type PlanId } from '../constants/plans';
+import {
+  PLANS,
+  PLANS_ORDER,
+  MONTHLY_PLAN_CHECKOUT_URL,
+  QUARTERLY_PLAN_CHECKOUT_URL,
+  YEARLY_PLAN_CHECKOUT_URL,
+  type PlanId,
+} from '../constants/plans';
 import { createCheckout } from '../services/subscriptionService';
 
 interface PlansCarouselSlideProps {
@@ -75,10 +82,19 @@ const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
   const handleSelectPlan = async (planId: PlanId) => {
     setError(null);
     setLoadingPlan(planId);
-    const origin = window.location.origin + window.location.pathname;
-    const successUrl = `${origin}?payment=success`;
-    const failureUrl = `${origin}?payment=failure`;
     try {
+      // Planos com link direto do Mercado Pago (webhook avisará quando o pagamento for realizado)
+      const directUrl =
+        planId === 'monthly' ? MONTHLY_PLAN_CHECKOUT_URL :
+        planId === 'quarterly' ? QUARTERLY_PLAN_CHECKOUT_URL :
+        planId === 'yearly' ? YEARLY_PLAN_CHECKOUT_URL : null;
+      if (directUrl) {
+        window.location.href = directUrl;
+        return;
+      }
+      const origin = window.location.origin + window.location.pathname;
+      const successUrl = `${origin}?payment=success`;
+      const failureUrl = `${origin}?payment=failure`;
       const { init_point, error: err } = await createCheckout(
         userId,
         planId,
