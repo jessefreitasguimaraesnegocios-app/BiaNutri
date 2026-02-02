@@ -1,1 +1,17 @@
 /* BiaNutri - Main CSS File */
+
+@keyframes goal-celebrate {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  50% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-goal-celebrate {
+  animation: goal-celebrate 0.5s ease-out forwards;
+}
+@keyframes confetti-shine {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.2); }
+}
+.animate-confetti-shine {
+  animation: confetti-shine 1s ease-in-out infinite;
+}

@@ -61,6 +61,9 @@ const texts = {
     tomorrow: 'Amanhã',
     changeCycle: 'Trocar ciclo',
     apply: 'Aplicar',
+    endTimeChoice: 'Quando você encerrou o jejum?',
+    endedAt: 'Encerrei às',
+    confirmEnd: 'Encerrar',
   },
   en: {
     title: 'Fasting',
@@ -94,6 +97,9 @@ const texts = {
     tomorrow: 'Tomorrow',
     changeCycle: 'Change cycle',
     apply: 'Apply',
+    endTimeChoice: 'When did you end the fast?',
+    endedAt: 'I ended at',
+    confirmEnd: 'End',
   },
 };
 
@@ -109,6 +115,15 @@ function formatElapsed(seconds: number): string {
 
 /** Dado "HH:mm", retorna timestamp do início (hoje ou ontem se o horário ainda não passou). */
 function getStartTimestampFromTime(timeStr: string): number {
+  const [h, m] = timeStr.split(':').map(Number);
+  const d = new Date();
+  d.setHours(h, m ?? 0, 0, 0);
+  if (d.getTime() > Date.now()) d.setDate(d.getDate() - 1);
+  return d.getTime();
+}
+
+/** Dado "HH:mm", retorna timestamp do fim (hoje ou ontem se o horário ainda não passou). */
+function getEndTimestampFromTime(timeStr: string): number {
   const [h, m] = timeStr.split(':').map(Number);
   const d = new Date();
   d.setHours(h, m ?? 0, 0, 0);
@@ -155,6 +170,12 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
   });
   const [showCustomCycleInput, setShowCustomCycleInput] = useState(false);
   const [switchCustomHours, setSwitchCustomHours] = useState(16);
+  const [showEndTimeModal, setShowEndTimeModal] = useState(false);
+  const [endTimeChoice, setEndTimeChoice] = useState<'now' | 'past'>('now');
+  const [endTimePast, setEndTimePast] = useState(() => {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  });
 
   const t = texts[lang];
   const isDark = theme === 'dark';
@@ -263,16 +284,23 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
     setShowCustomCycleInput(false);
   };
 
-  const handleEndFast = () => {
+  const handleOpenEndModal = () => {
+    const d = new Date();
+    setEndTimePast(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+    setEndTimeChoice('now');
+    setShowEndTimeModal(true);
+  };
+
+  const handleEndFast = (endTimestamp: number) => {
     if (!currentFast) return;
-    const today = dateToKey(new Date());
     const startDate = new Date(currentFast.startTimestamp);
-    const endDate = new Date();
+    const endDate = new Date(endTimestamp);
+    const entryDate = dateToKey(endDate);
     const startStr = startDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
     const endStr = endDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
-    const hours = Math.round((elapsedSeconds / 3600) * 10) / 10;
+    const hours = Math.round(((endTimestamp - currentFast.startTimestamp) / 3600000) * 10) / 10;
     const entry: FastingEntry = {
-      date: today,
+      date: entryDate,
       startTime: startStr,
       endTime: endStr,
       hours,
@@ -282,6 +310,13 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
     clearCurrentFast(userId);
     setCurrentFastState(null);
     setEntries(getFastingEntries(userId));
+    setShowEndTimeModal(false);
+  };
+
+  const handleConfirmEndFast = () => {
+    if (!currentFast) return;
+    const ts = endTimeChoice === 'now' ? Date.now() : getEndTimestampFromTime(endTimePast);
+    handleEndFast(ts);
   };
 
   const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
@@ -356,7 +391,7 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
         <div className={`rounded-2xl p-6 sm:p-8 border-2 ${
           isDark ? 'bg-slate-800/80 border-brand-500/50' : 'bg-brand-50 border-brand-500/40'
         }`}>
-          <p className={`text-sm font-semibold uppercase tracking-wider text-center mb-2 ${
+          <p className={`text-base font-semibold uppercase tracking-wider text-center mb-2 ${
             isDark ? 'text-brand-400' : 'text-brand-600'
           }`}>
             {t.elapsed}
@@ -365,24 +400,31 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
             className={`text-center font-mono tabular-nums select-none ${
               isDark ? 'text-white' : 'text-slate-900'
             }`}
-            style={{ fontSize: 'clamp(3rem, 15vw, 5rem)', lineHeight: 1.1 }}
+            style={{ fontSize: 'clamp(3.25rem, 16vw, 5.5rem)', lineHeight: 1.1 }}
           >
             {formatElapsed(elapsedSeconds)}
           </p>
           {currentFast.cycle !== 'custom' && (
-            <p className={`text-center text-sm mt-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            <p className={`text-center text-base mt-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
               {t.goal}: {currentFast.plannedHours < 1
                 ? `${Math.round(currentFast.plannedHours * 60)} ${t.min}`
                 : `${currentFast.plannedHours}h`}
             </p>
           )}
           {currentFast.cycle !== 'custom' && elapsedSeconds >= currentFast.plannedHours * 3600 && (
-            <p className="text-center text-lg font-bold text-green-500 dark:text-green-400 mt-2">
-              {t.goalHit}
-            </p>
+            <div className="mt-4 p-4 rounded-2xl bg-green-500/20 dark:bg-green-500/25 border-2 border-green-500/50 animate-goal-celebrate">
+              <p className="text-center text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400 flex items-center justify-center gap-2 flex-wrap">
+                <span className="animate-confetti-shine" aria-hidden>🎉</span>
+                {t.goalHit}
+                <span className="animate-confetti-shine" aria-hidden>🎉</span>
+              </p>
+              <p className={`text-center text-base mt-1 ${isDark ? 'text-green-300' : 'text-green-700'}`}>
+                {lang === 'pt' ? 'Parabéns! Você bateu a meta!' : 'Congratulations! You hit your goal!'}
+              </p>
+            </div>
           )}
           <button
-            onClick={handleEndFast}
+            onClick={handleOpenEndModal}
             className="w-full mt-4 py-4 rounded-xl font-bold flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white shadow-lg"
           >
             <Square size={20} />
@@ -391,12 +433,76 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
         </div>
       )}
 
+      {/* Modal: quando encerrou o jejum (agora ou horário passado) */}
+      {showEndTimeModal && currentFast && (
+        <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4">
+          <div
+            className={`w-full max-w-sm rounded-2xl p-6 ${
+              isDark ? 'bg-slate-800' : 'bg-white'
+            } shadow-xl`}
+          >
+            <p className={`font-bold text-lg mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              {t.endTimeChoice}
+            </p>
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setEndTimeChoice('now')}
+                className={`flex-1 py-3 rounded-xl font-bold ${
+                  endTimeChoice === 'now'
+                    ? 'bg-brand-500 text-white'
+                    : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-700'
+                }`}
+              >
+                {t.useCurrentTime}
+              </button>
+              <button
+                onClick={() => setEndTimeChoice('past')}
+                className={`flex-1 py-3 rounded-xl font-bold ${
+                  endTimeChoice === 'past'
+                    ? 'bg-brand-500 text-white'
+                    : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-700'
+                }`}
+              >
+                {t.endedAt}
+              </button>
+            </div>
+            {endTimeChoice === 'past' && (
+              <div className="mb-4">
+                <input
+                  type="time"
+                  value={endTimePast}
+                  onChange={(e) => setEndTimePast(e.target.value)}
+                  className={`w-full p-3 rounded-xl font-mono text-lg ${
+                    isDark ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-900'
+                  } border-0`}
+                />
+              </div>
+            )}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowEndTimeModal(false)}
+                className="flex-1 py-3 rounded-xl font-bold border-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200"
+              >
+                {t.cancel}
+              </button>
+              <button
+                onClick={handleConfirmEndFast}
+                className="flex-1 py-3 rounded-xl font-bold bg-red-500 hover:bg-red-600 text-white flex items-center justify-center gap-2"
+              >
+                <Square size={18} />
+                {t.confirmEnd}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Quando jejum em andamento: horário final esperado + trocar ciclo (no lugar do calendário) */}
       {currentFast && (
-        <div className={`space-y-4 rounded-2xl p-4 ${isDark ? 'bg-slate-800/80' : 'bg-slate-100'}`}>
+        <div className={`space-y-6 rounded-2xl p-5 sm:p-6 ${isDark ? 'bg-slate-800/80' : 'bg-slate-100'}`}>
           <div>
-            <label className="text-xs font-bold uppercase text-slate-500">{t.expectedEnd}</label>
-            <p className={`mt-1 text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <label className="text-sm font-bold uppercase tracking-wider text-slate-500">{t.expectedEnd}</label>
+            <p className={`mt-2 text-2xl sm:text-3xl font-bold font-mono tabular-nums ${isDark ? 'text-white' : 'text-slate-900'}`}>
               {formatExpectedEnd(
                 currentFast.startTimestamp,
                 currentFast.plannedHours,
@@ -406,8 +512,8 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
             </p>
           </div>
           <div>
-            <label className="text-xs font-bold uppercase text-slate-500">{t.changeCycle}</label>
-            <div className="flex flex-wrap gap-2 mt-2">
+            <label className="text-sm font-bold uppercase tracking-wider text-slate-500">{t.changeCycle}</label>
+            <div className="flex flex-wrap gap-3 mt-3">
               {CYCLES.filter((c) => c.id !== '1m').map((c) => (
                 <button
                   key={c.id}
@@ -415,7 +521,7 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
                     if (c.id === 'custom') setShowCustomCycleInput(true);
                     else handleChangeCycle(c.id);
                   }}
-                  className={`px-3 py-2 rounded-xl text-sm font-bold transition-all ${
+                  className={`px-4 py-3 rounded-xl text-base font-bold transition-all ${
                     currentFast.cycle === c.id
                       ? 'bg-brand-500 text-white shadow-md'
                       : isDark
@@ -428,7 +534,7 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
               ))}
             </div>
             {showCustomCycleInput && (
-              <div className="flex gap-2 items-center mt-3">
+              <div className="flex gap-2 items-center mt-4">
                 <input
                   type="number"
                   min={1}
@@ -439,10 +545,10 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
                     isDark ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-900'
                   } border-0`}
                 />
-                <span className="text-sm text-slate-500">{t.hours}</span>
+                <span className="text-base text-slate-500">{t.hours}</span>
                 <button
                   onClick={() => handleChangeCycle('custom', switchCustomHours)}
-                  className="px-4 py-3 rounded-xl font-bold bg-brand-500 text-white hover:bg-brand-600"
+                  className="px-5 py-3 rounded-xl font-bold text-base bg-brand-500 text-white hover:bg-brand-600"
                 >
                   {t.apply}
                 </button>
