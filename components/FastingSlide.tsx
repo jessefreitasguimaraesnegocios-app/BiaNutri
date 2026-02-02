@@ -56,6 +56,11 @@ const texts = {
     close: 'Fechar',
     noData: 'Nenhum jejum neste dia.',
     swipeHint: '← Voltar para o app',
+    expectedEnd: 'Horário final esperado',
+    today: 'Hoje',
+    tomorrow: 'Amanhã',
+    changeCycle: 'Trocar ciclo',
+    apply: 'Aplicar',
   },
   en: {
     title: 'Fasting',
@@ -84,6 +89,11 @@ const texts = {
     close: 'Close',
     noData: 'No fast on this day.',
     swipeHint: '← Back to app',
+    expectedEnd: 'Expected end time',
+    today: 'Today',
+    tomorrow: 'Tomorrow',
+    changeCycle: 'Change cycle',
+    apply: 'Apply',
   },
 };
 
@@ -106,6 +116,26 @@ function getStartTimestampFromTime(timeStr: string): number {
   return d.getTime();
 }
 
+/** Formata horário final esperado: "Hoje 11:08" ou "Amanhã 11:08". */
+function formatExpectedEnd(
+  startTimestamp: number,
+  plannedHours: number,
+  todayLabel: string,
+  tomorrowLabel: string
+): string {
+  const endMs = startTimestamp + plannedHours * 3600 * 1000;
+  const endDate = new Date(endMs);
+  const timeStr = endDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endDay = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (endDay.getTime() === today.getTime()) return `${todayLabel} ${timeStr}`;
+  if (endDay.getTime() === tomorrow.getTime()) return `${tomorrowLabel} ${timeStr}`;
+  return `${endDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} ${timeStr}`;
+}
+
 const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
   const [cycle, setCycle] = useState<FastingCycle>('16');
   const [startTime, setStartTime] = useState('20:00');
@@ -123,6 +153,8 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
     const d = new Date();
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   });
+  const [showCustomCycleInput, setShowCustomCycleInput] = useState(false);
+  const [switchCustomHours, setSwitchCustomHours] = useState(16);
 
   const t = texts[lang];
   const isDark = theme === 'dark';
@@ -212,6 +244,23 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
   const handleConfirmStart = () => {
     const ts = startTimeChoice === 'now' ? Date.now() : getStartTimestampFromTime(pastStartTime);
     handleStartWithTime(ts);
+  };
+
+  /** Troca o ciclo do jejum em andamento (mantém o início, atualiza meta). */
+  const handleChangeCycle = (newCycle: FastingCycle, customHoursValue?: number) => {
+    if (!currentFast) return;
+    const plannedHours =
+      newCycle === 'custom'
+        ? (customHoursValue ?? switchCustomHours)
+        : (CYCLES.find((c) => c.id === newCycle)?.hours ?? currentFast.plannedHours);
+    const updated: CurrentFast = {
+      startTimestamp: currentFast.startTimestamp,
+      plannedHours,
+      cycle: newCycle,
+    };
+    setCurrentFast(userId, updated);
+    setCurrentFastState(updated);
+    setShowCustomCycleInput(false);
   };
 
   const handleEndFast = () => {
@@ -339,6 +388,67 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
             <Square size={20} />
             {t.endFast}
           </button>
+        </div>
+      )}
+
+      {/* Quando jejum em andamento: horário final esperado + trocar ciclo (no lugar do calendário) */}
+      {currentFast && (
+        <div className={`space-y-4 rounded-2xl p-4 ${isDark ? 'bg-slate-800/80' : 'bg-slate-100'}`}>
+          <div>
+            <label className="text-xs font-bold uppercase text-slate-500">{t.expectedEnd}</label>
+            <p className={`mt-1 text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              {formatExpectedEnd(
+                currentFast.startTimestamp,
+                currentFast.plannedHours,
+                t.today,
+                t.tomorrow
+              )}
+            </p>
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase text-slate-500">{t.changeCycle}</label>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {CYCLES.filter((c) => c.id !== '1m').map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => {
+                    if (c.id === 'custom') setShowCustomCycleInput(true);
+                    else handleChangeCycle(c.id);
+                  }}
+                  className={`px-3 py-2 rounded-xl text-sm font-bold transition-all ${
+                    currentFast.cycle === c.id
+                      ? 'bg-brand-500 text-white shadow-md'
+                      : isDark
+                      ? 'bg-slate-700 text-slate-300'
+                      : 'bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+            {showCustomCycleInput && (
+              <div className="flex gap-2 items-center mt-3">
+                <input
+                  type="number"
+                  min={1}
+                  max={24}
+                  value={switchCustomHours}
+                  onChange={(e) => setSwitchCustomHours(Number(e.target.value) || 16)}
+                  className={`flex-1 p-3 rounded-xl font-mono text-lg ${
+                    isDark ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-900'
+                  } border-0`}
+                />
+                <span className="text-sm text-slate-500">{t.hours}</span>
+                <button
+                  onClick={() => handleChangeCycle('custom', switchCustomHours)}
+                  className="px-4 py-3 rounded-xl font-bold bg-brand-500 text-white hover:bg-brand-600"
+                >
+                  {t.apply}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -497,58 +607,60 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
         </div>
       )}
 
-      {/* Calendário */}
-      <div className="space-y-2">
-        <label className="text-xs font-bold uppercase text-slate-500">{t.calendar}</label>
-        <div className={`rounded-2xl p-4 ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
-          <div className="flex items-center justify-between mb-3">
-            <button
-              onClick={prevMonth}
-              className="p-2 rounded-lg hover:bg-white/10 text-slate-500"
-            >
-              <ChevronLeft size={20} />
-            </button>
-            <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
-            </span>
-            <button
-              onClick={nextMonth}
-              className="p-2 rounded-lg hover:bg-white/10 text-slate-500"
-            >
-              <ChevronRight size={20} />
-            </button>
-          </div>
-          <div className="grid grid-cols-7 gap-1 text-center text-xs font-bold text-slate-500 mb-2">
-            {dayNames.map((d) => (
-              <div key={d}>{d}</div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {Array.from({ length: startingDayOfWeek }, (_, i) => (
-              <div key={`empty-${i}`} />
-            ))}
-            {Array.from({ length: daysInMonth }, (_, i) => {
-              const day = i + 1;
-              const has = hasFasting(day);
-              return (
-                <button
-                  key={day}
-                  onClick={() => handleDayClick(day)}
-                  className={`aspect-square rounded-lg flex items-center justify-center text-sm font-bold transition-colors ${
-                    has
-                      ? 'bg-brand-500 text-white'
-                      : isDark
-                      ? 'text-slate-300 hover:bg-slate-700'
-                      : 'text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  {day}
-                </button>
-              );
-            })}
+      {/* Calendário – só quando não há jejum em andamento */}
+      {!currentFast && (
+        <div className="space-y-2">
+          <label className="text-xs font-bold uppercase text-slate-500">{t.calendar}</label>
+          <div className={`rounded-2xl p-4 ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
+            <div className="flex items-center justify-between mb-3">
+              <button
+                onClick={prevMonth}
+                className="p-2 rounded-lg hover:bg-white/10 text-slate-500"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+              </span>
+              <button
+                onClick={nextMonth}
+                className="p-2 rounded-lg hover:bg-white/10 text-slate-500"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+            <div className="grid grid-cols-7 gap-1 text-center text-xs font-bold text-slate-500 mb-2">
+              {dayNames.map((d) => (
+                <div key={d}>{d}</div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({ length: startingDayOfWeek }, (_, i) => (
+                <div key={`empty-${i}`} />
+              ))}
+              {Array.from({ length: daysInMonth }, (_, i) => {
+                const day = i + 1;
+                const has = hasFasting(day);
+                return (
+                  <button
+                    key={day}
+                    onClick={() => handleDayClick(day)}
+                    className={`aspect-square rounded-lg flex items-center justify-center text-sm font-bold transition-colors ${
+                      has
+                        ? 'bg-brand-500 text-white'
+                        : isDark
+                        ? 'text-slate-300 hover:bg-slate-700'
+                        : 'text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {day}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Modal dia clicado */}
       {selectedDate && (
