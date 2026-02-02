@@ -15,7 +15,7 @@ const NutritionChart: React.FC<NutritionChartProps> = ({ data, lang }) => {
   ];
 
   return (
-    <div className="w-full h-64 flex flex-col items-center justify-center bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm">
+    <div className="relative w-full h-64 flex flex-col items-center justify-center bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
@@ -45,7 +45,7 @@ const NutritionChart: React.FC<NutritionChartProps> = ({ data, lang }) => {
         </PieChart>
       </ResponsiveContainer>
 
-      <div className="absolute mt-[-30px]">
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div className="text-center">
           <span className="block text-3xl font-bold text-slate-800 dark:text-white">{data.calories}</span>
           <span className="text-xs text-slate-500 dark:text-slate-400 font-uppercase tracking-wider">KCAL</span>

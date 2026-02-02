@@ -244,17 +244,17 @@ function App() {
     return () => clearInterval(id);
   }, [isTrialActive, profile?.trial_seconds_used, TRIAL_SECONDS_LIMIT]);
 
-  // Iniciar carrossel na Home (segunda slide); Planos ficam à esquerda
+  // Após login, ir para a tela Home (segunda slide); Planos ficam à esquerda
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || accessStatus !== 'allowed') return;
     const el = carouselRef.current;
     if (!el) return;
-    const id = requestAnimationFrame(() => {
+    const t = setTimeout(() => {
       const slideWidth = el.offsetWidth || el.clientWidth;
       if (slideWidth > 0) el.scrollLeft = slideWidth;
-    });
-    return () => cancelAnimationFrame(id);
-  }, [userId]);
+    }, 150);
+    return () => clearTimeout(t);
+  }, [userId, accessStatus]);
 
   // Carregar apenas dados do usuário atual (chave com userId). Sem fallback em chave legada para não misturar dados entre usuários.
   useEffect(() => {
