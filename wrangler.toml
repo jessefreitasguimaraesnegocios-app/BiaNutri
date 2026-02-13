@@ -1,5 +1,5 @@
-# Cloudflare Pages - BiaNutri (app estático Vite/React)
-# Build: npm run build | Saída: dist/
-# Node: use .node-version ou .nvmrc (20) no painel se o build falhar
+# Cloudflare Worker "bianutri" (para o check do GitHub passar).
+# App real: bia-nutri.vercel.app. Se criar Pages depois, configure build/output no dashboard.
 name = "bianutri"
-pages_build_output_dir = "dist"
+main = "worker.js"
+compatibility_date = "2024-01-01"

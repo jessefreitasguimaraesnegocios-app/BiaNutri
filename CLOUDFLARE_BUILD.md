@@ -1,6 +1,6 @@
 # Corrigir o check "Workers Builds: bianutri" (failed in 0s)
 
-O **commit e o push estão corretos** — o Vercel passa. O que falha é só o check do **Cloudflare** (projeto configurado como Worker em vez de Pages). Não é erro de código.
+Foi adicionado um **Worker mínimo** (`worker.js` + `main` no `wrangler.toml`) para o build do Cloudflare passar. O app real continua em **bia-nutri.vercel.app** (Vercel).
 
 ---
 
