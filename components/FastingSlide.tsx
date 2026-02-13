@@ -736,8 +736,8 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
               </button>
             </div>
             <div className="grid grid-cols-7 gap-1 text-center text-xs font-bold text-slate-500 mb-2">
-              {dayNames.map((d) => (
-                <div key={d}>{d}</div>
+              {dayNames.map((d, i) => (
+                <div key={`dayname-${i}`}>{d}</div>
               ))}
             </div>
             <div className="grid grid-cols-7 gap-1">

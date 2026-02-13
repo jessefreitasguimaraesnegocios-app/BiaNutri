@@ -84,11 +84,19 @@ export function getTrialStatusFromProfile(profile: {
   return 'none';
 }
 
-/** Obtém headers com JWT da sessão para Edge Functions. */
+/** Obtém headers com JWT da sessão para Edge Functions. Tenta atualizar a sessão antes para evitar 401 por token expirado. */
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) return {};
-  return { Authorization: `Bearer ${session.access_token}` };
+  let token = session.access_token;
+  try {
+    const { data: { session: refreshed } } = await supabase.auth.refreshSession({ refresh_token: session.refresh_token });
+    if (refreshed?.access_token) token = refreshed.access_token;
+  } catch {
+    // Usa o token atual se o refresh falhar (ex.: offline)
+  }
+  if (!token) return {};
+  return { Authorization: `Bearer ${token}` };
 }
 
 /** Inicia o trial (backend valida telefone e se já foi usado). */
