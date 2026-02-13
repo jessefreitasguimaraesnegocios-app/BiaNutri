@@ -1,5 +1,21 @@
 # Corrigir o check "Workers Builds: bianutri" (failed in 0s)
 
+O **commit e o push estão corretos** — o Vercel passa. O que falha é só o check do **Cloudflare** (projeto configurado como Worker em vez de Pages). Não é erro de código.
+
+---
+
+## ✅ Rápido: fazer o commit mostrar só sucesso (já usa Vercel)
+
+Se você **só usa Vercel** e quer que o commit não mostre mais "1 failing check":
+
+1. No **GitHub**: repositório **BiaNutri** → **Settings** (da organização ou do repo).
+2. Menu lateral: **Integrations** → **Applications** → **Installed GitHub Apps** (ou acesse: [github.com/settings/installations](https://github.com/settings/installations) — se for organização: **Switch settings context** → sua org → **Installed GitHub Apps**).
+3. Clique em **Cloudflare Workers and Pages** → **Configure**.
+4. Em **Repository access**: **Only select repositories** → desmarque **BiaNutri** (ou remova da lista). Salve.
+5. Pronto. Nos próximos commits só o Vercel rodará e não haverá check falhando.
+
+---
+
 **Diagnóstico:** BiaNutri é **A) App React/Vite frontend** (site estático). O check falha porque no Cloudflare foi criado um **Worker** em vez de um **Pages Project**.
 
 - **Worker** espera: `main = "src/index.ts"` (script com entry-point).
