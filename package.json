@@ -13,6 +13,7 @@
     "supabase:login": "npx supabase login",
     "supabase:link": "npx supabase link --project-ref lypnxkbbxeagehrqpuoj",
     "supabase:deploy": "npx supabase functions deploy gemini",
+    "supabase:deploy:mp": "npx supabase functions deploy mercadopago-subscription mercadopago-cancel-subscription mercadopago-webhook",
     "supabase:deploy:all": "npx supabase functions deploy"
   },
   "dependencies": {

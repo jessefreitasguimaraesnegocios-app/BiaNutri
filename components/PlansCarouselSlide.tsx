@@ -1,14 +1,11 @@
-import React, { useState } from 'react';
-import { Loader2, Zap, Shield, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Loader2, Zap, Shield, RefreshCw, XCircle } from 'lucide-react';
+import { PLANS, PLANS_ORDER, type PlanId } from '../constants/plans';
 import {
-  PLANS,
-  PLANS_ORDER,
-  MONTHLY_PLAN_CHECKOUT_URL,
-  QUARTERLY_PLAN_CHECKOUT_URL,
-  YEARLY_PLAN_CHECKOUT_URL,
-  type PlanId,
-} from '../constants/plans';
-import { createCheckout } from '../services/subscriptionService';
+  createSubscriptionCheckout,
+  getSubscription,
+  cancelSubscription,
+} from '../services/subscriptionService';
 
 interface PlansCarouselSlideProps {
   userId: string;
@@ -36,6 +33,13 @@ const texts = {
     trialMin: 'min',
     verifySubscription: 'Verificar assinatura',
     verifying: 'Verificando...',
+    yourSubscription: 'Sua assinatura',
+    validUntil: 'Válida até',
+    cancelSubscription: 'Cancelar assinatura',
+    cancelConfirm: 'Tem certeza que deseja cancelar? Você perderá o acesso ao fim do período já pago.',
+    cancelling: 'Cancelando...',
+    cancelSuccess: 'Assinatura cancelada.',
+    cancel: 'Não, manter',
   },
   en: {
     title: 'Plans',
@@ -51,6 +55,13 @@ const texts = {
     trialMin: 'min',
     verifySubscription: 'Verify subscription',
     verifying: 'Verifying...',
+    yourSubscription: 'Your subscription',
+    validUntil: 'Valid until',
+    cancelSubscription: 'Cancel subscription',
+    cancelConfirm: 'Are you sure you want to cancel? You will lose access at the end of the paid period.',
+    cancelling: 'Cancelling...',
+    cancelSuccess: 'Subscription cancelled.',
+    cancel: 'No, keep it',
   },
 };
 
@@ -66,40 +77,79 @@ const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [subscription, setSubscription] = useState<{
+    plan_id: string;
+    status: string;
+    valid_until: string;
+  } | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const t = texts[lang];
   const isDark = theme === 'dark';
+
+  useEffect(() => {
+    let cancelled = false;
+    getSubscription(userId).then((sub) => {
+      if (!cancelled && sub && sub.status === 'active' && new Date(sub.valid_until) > new Date()) {
+        setSubscription({ plan_id: sub.plan_id, status: sub.status, valid_until: sub.valid_until });
+      } else {
+        setSubscription(null);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [userId]);
 
   const handleVerifySubscription = async () => {
     if (!onVerifySubscription || isVerifying) return;
     setIsVerifying(true);
+    setError(null);
     try {
       await onVerifySubscription();
+      const sub = await getSubscription(userId);
+      if (sub && sub.status === 'active' && new Date(sub.valid_until) > new Date()) {
+        setSubscription({ plan_id: sub.plan_id, status: sub.status, valid_until: sub.valid_until });
+      } else {
+        setSubscription(null);
+      }
+    } catch {
+      setError(lang === 'pt' ? 'Não foi possível verificar. Tente novamente.' : 'Could not verify. Please try again.');
     } finally {
       setIsVerifying(false);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!showCancelConfirm) {
+      setShowCancelConfirm(true);
+      return;
+    }
+    setIsCancelling(true);
+    setError(null);
+    try {
+      const res = await cancelSubscription(userId);
+      if (res.ok) {
+        setSubscription(null);
+        setShowCancelConfirm(false);
+        if (onVerifySubscription) await onVerifySubscription();
+      } else {
+        setError(res.error ?? t.error);
+      }
+    } finally {
+      setIsCancelling(false);
     }
   };
 
   const handleSelectPlan = async (planId: PlanId) => {
     setError(null);
     setLoadingPlan(planId);
+    const origin = window.location.origin + window.location.pathname;
+    const backUrl = `${origin}?payment=success`;
     try {
-      // Planos com link direto do Mercado Pago (webhook avisará quando o pagamento for realizado)
-      const directUrl =
-        planId === 'monthly' ? MONTHLY_PLAN_CHECKOUT_URL :
-        planId === 'quarterly' ? QUARTERLY_PLAN_CHECKOUT_URL :
-        planId === 'yearly' ? YEARLY_PLAN_CHECKOUT_URL : null;
-      if (directUrl) {
-        window.location.href = directUrl;
-        return;
-      }
-      const origin = window.location.origin + window.location.pathname;
-      const successUrl = `${origin}?payment=success`;
-      const failureUrl = `${origin}?payment=failure`;
-      const { init_point, error: err } = await createCheckout(
+      // Assinatura via API: external_reference = userId|planId (webhook identifica 100% pelo ID)
+      const { init_point, error: err } = await createSubscriptionCheckout(
         userId,
         planId,
-        successUrl,
-        failureUrl
+        backUrl
       );
       if (err) {
         setError(t.error);
@@ -261,12 +311,67 @@ const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
         </div>
       )}
 
+      {subscription && (
+        <div className={`rounded-2xl p-4 border-2 ${isDark ? 'bg-slate-800 border-slate-600' : 'bg-white border-slate-200'}`}>
+          <p className={`text-sm font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            {t.yourSubscription}
+          </p>
+          <p className={`mt-1 font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            {PLANS[subscription.plan_id as PlanId]?.labelShort ?? subscription.plan_id}
+          </p>
+          <p className={`text-sm mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            {t.validUntil}: {new Date(subscription.valid_until).toLocaleDateString(lang === 'pt' ? 'pt-BR' : 'en-US', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+          </p>
+          {!showCancelConfirm ? (
+            <button
+              type="button"
+              onClick={handleCancelSubscription}
+              disabled={isCancelling}
+              className="w-full mt-3 py-3 rounded-xl font-bold flex items-center justify-center gap-2 border-2 border-red-500/50 text-red-600 dark:text-red-400 hover:bg-red-500/10"
+            >
+              {isCancelling ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  {t.cancelling}
+                </>
+              ) : (
+                <>
+                  <XCircle size={18} />
+                  {t.cancelSubscription}
+                </>
+              )}
+            </button>
+          ) : (
+            <div className="mt-3 space-y-2">
+              <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{t.cancelConfirm}</p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCancelConfirm(false)}
+                  className="flex-1 py-3 rounded-xl font-bold border-2 border-slate-300 dark:border-slate-600"
+                >
+                  {t.cancel}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelSubscription}
+                  disabled={isCancelling}
+                  className="flex-1 py-3 rounded-xl font-bold bg-red-500 hover:bg-red-600 text-white flex items-center justify-center gap-2"
+                >
+                  {isCancelling ? <Loader2 size={18} className="animate-spin" /> : t.cancelSubscription}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {onVerifySubscription && (
         <button
           type="button"
           onClick={handleVerifySubscription}
           disabled={isVerifying}
-          className={`w-full py-3.5 px-4 rounded-xl font-bold flex items-center justify-center gap-2 border-2 ${
+          className={`w-full py-3.5 px-4 rounded-xl font-bold flex items-center justify-center gap-2 border-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
             isDark
               ? 'border-slate-600 bg-slate-800 hover:bg-slate-700 text-slate-100'
               : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-800'

@@ -28,9 +28,12 @@ No terminal, na pasta do projeto:
 
 ```bash
 npx supabase functions deploy trial
-npx supabase functions deploy mercadopago-checkout
+npx supabase functions deploy mercadopago-subscription
+npx supabase functions deploy mercadopago-cancel-subscription
 npx supabase functions deploy mercadopago-webhook
 ```
+
+Ou use o script: `npm run supabase:deploy:mp` (só as funções do Mercado Pago).
 
 ### 3. Secrets no Supabase (Edge Functions)
 
@@ -52,13 +55,13 @@ No **Dashboard do Supabase** → **Project Settings** → **Edge Functions** →
    ```
 
    Substitua `<SEU_PROJECT_REF>` pelo ref do projeto (ex.: `lypnxkbbxeagehrqpuoj`).
-3. Eventos: marque **Pagamentos** (payment created/updated).
+3. Eventos: marque **Pagamentos** e **Assinaturas** (preapproval), para cobranças únicas e assinaturas.
 
-Assim, quando um pagamento for aprovado, o MP chama essa URL e a função atualiza a tabela `subscriptions`, liberando o acesso no app.
+Assim, quando um pagamento/assinatura for aprovado, o MP chama essa URL e a função atualiza a tabela `subscriptions` (usando `external_reference = userId|planId`), liberando o acesso no app. O usuário também pode cancelar a assinatura pelo app (função `mercadopago-cancel-subscription`).
 
 ### 5. URLs de retorno (opcional)
 
-O checkout já usa as URLs da própria página do app com `?payment=success` e `?payment=failure`. Se quiser páginas específicas, altere no front ao chamar `createCheckout` (parâmetros `successUrl` e `failureUrl`).
+O checkout já usa as URLs da própria página do app com `?payment=success` e `?payment=failure`. Se quiser páginas específicas, altere no front ao chamar `createSubscriptionCheckout` (parâmetro `backUrl`).
 
 ---
 

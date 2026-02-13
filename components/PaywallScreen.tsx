@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, Check, Loader2, Shield, Zap, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
 import { PLANS, PLANS_ORDER, type PlanId } from '../constants/plans';
-import { createCheckout } from '../services/subscriptionService';
+import { createSubscriptionCheckout } from '../services/subscriptionService';
 
 interface PaywallScreenProps {
   userId: string;
@@ -96,14 +96,12 @@ const PaywallScreen: React.FC<PaywallScreenProps> = ({
     setError(null);
     setLoadingPlan(planId);
     const origin = window.location.origin + window.location.pathname;
-    const successUrl = `${origin}?payment=success`;
-    const failureUrl = `${origin}?payment=failure`;
+    const backUrl = `${origin}?payment=success`;
     try {
-      const { init_point, error: err } = await createCheckout(
+      const { init_point, error: err } = await createSubscriptionCheckout(
         userId,
         planId,
-        successUrl,
-        failureUrl
+        backUrl
       );
       if (err) {
         setError(t.error);

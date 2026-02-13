@@ -4,6 +4,8 @@ import { TRIAL_SECONDS_LIMIT } from '../constants/plans';
 
 const TRIAL_FUNCTION = 'trial';
 const MERCADOPAGO_FUNCTION = 'mercadopago-checkout';
+const MERCADOPAGO_SUBSCRIPTION_FUNCTION = 'mercadopago-subscription';
+const MERCADOPAGO_CANCEL_FUNCTION = 'mercadopago-cancel-subscription';
 
 /** Normaliza telefone: só dígitos (BR: 10 ou 11 dígitos) */
 export function normalizePhone(phone: string): string {
@@ -181,7 +183,7 @@ export async function getAccessStatus(
   return 'allowed';
 }
 
-/** Cria preferência no Mercado Pago e retorna init_point (URL de checkout). */
+/** Cria preferência no Mercado Pago (pagamento único) e retorna init_point. */
 export async function createCheckout(
   userId: string,
   planId: string,
@@ -202,4 +204,51 @@ export async function createCheckout(
   const body = data as any;
   if (body?.error) return { error: body.error };
   return { init_point: body?.init_point ?? body?.url };
+}
+
+/** Cria assinatura (recurring) via API com external_reference userId|planId e retorna init_point. */
+export async function createSubscriptionCheckout(
+  userId: string,
+  planId: string,
+  backUrl: string
+): Promise<{ init_point?: string; error?: string }> {
+  const headers = await getAuthHeaders();
+  const { data, error } = await supabase.functions.invoke(MERCADOPAGO_SUBSCRIPTION_FUNCTION, {
+    body: { user_id: userId, plan_id: planId, back_url: backUrl },
+    headers: Object.keys(headers).length ? headers : undefined,
+  });
+  if (error) return { error: error.message };
+  const body = data as any;
+  if (body?.error) return { error: body.error };
+  return { init_point: body?.init_point ?? body?.url };
+}
+
+/** Retorna a assinatura atual do usuário (se houver). */
+export async function getSubscription(userId: string): Promise<{
+  id: string;
+  plan_id: string;
+  status: string;
+  valid_until: string;
+  mp_payment_id: string | null;
+} | null> {
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .select('id, plan_id, status, valid_until, mp_payment_id')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data as any;
+}
+
+/** Cancela a assinatura no MP e atualiza no Supabase. */
+export async function cancelSubscription(userId: string): Promise<{ ok: boolean; error?: string }> {
+  const headers = await getAuthHeaders();
+  const { data, error } = await supabase.functions.invoke(MERCADOPAGO_CANCEL_FUNCTION, {
+    body: { user_id: userId },
+    headers: Object.keys(headers).length ? headers : undefined,
+  });
+  if (error) return { ok: false, error: error.message };
+  const body = data as any;
+  if (body?.error) return { ok: false, error: body.error };
+  return { ok: true };
 }

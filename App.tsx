@@ -1855,6 +1855,7 @@ function App() {
             setPaymentReturn(null);
           } catch (e) {
             console.error('Erro ao verificar assinatura:', e);
+            setAccessStatus('paywall');
           }
         }}
       />
@@ -1909,11 +1910,15 @@ function App() {
             trialDisplayRemainingSeconds={trialDisplayRemainingSeconds}
             trialMinutes={TRIAL_MINUTES}
             onVerifySubscription={async () => {
-              const p = await getProfile(userId!);
-              setProfile(p);
-              const status = await getAccessStatus(userId!, p);
-              setAccessStatus(status);
-              setPaymentReturn(null);
+              try {
+                const p = await getProfile(userId!);
+                setProfile(p);
+                const status = await getAccessStatus(userId!, p);
+                setAccessStatus(status);
+                setPaymentReturn(null);
+              } catch (e) {
+                console.error('Erro ao verificar assinatura:', e);
+              }
             }}
           />
           <p className="text-center text-xs text-slate-400 dark:text-slate-500 py-2 px-2">
