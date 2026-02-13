@@ -1,21 +1,24 @@
 # Corrigir o check "Workers Builds: bianutri" (failed in 0s)
 
-O BiaNutri é um **site estático** (Vite/React). O check que falha no GitHub vem de um projeto **Cloudflare Workers** conectado a este repositório. Workers esperam um script (entry-point); este projeto é para **Cloudflare Pages**.
+**Diagnóstico:** BiaNutri é **A) App React/Vite frontend** (site estático). O check falha porque no Cloudflare foi criado um **Worker** em vez de um **Pages Project**.
 
-## O que fazer no Cloudflare
+- **Worker** espera: `main = "src/index.ts"` (script com entry-point).
+- **Pages** espera: `pages_build_output_dir = "dist"` (saída do `npm run build`).
+- Este repo tem só frontend → deve ser **Pages**, não Workers. Se misturar os dois → falha em 0s (o Cloudflare nem tenta rodar o build).
 
-### Opção A: Usar Pages (recomendado)
+---
+
+## Solução: usar Pages (recomendado)
 
 1. Acesse [Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages).
-2. **Desconecte** o projeto **Worker** "bianutri" deste repositório:
-   - Abra o projeto **bianutri** (se for Worker) → **Settings** → **Builds** → **Manage** (Git Repository) → **Disconnect** ou remova o repositório.
-3. Crie um projeto **Pages** para este repo:
-   - **Create application** → **Pages** → **Connect to Git**.
-   - Escolha o repositório `jessefreitasguimaraesnegocios-app/BiaNutri`.
+2. **Apague** o **Worker** chamado **bianutri** (ou desconecte o repo: Worker → Settings → Builds → Manage → Disconnect).
+3. Vá em **Pages** → **Create project** → **Connect to Git**.
+4. Conecte o repositório `jessefreitasguimaraesnegocios-app/BiaNutri`.
+5. Configure:
    - **Build command:** `npm run build`
    - **Build output directory:** `dist`
-   - (Opcional) Em **Environment variables**, defina `NODE_VERSION` = `20` se o build falhar.
-4. Faça o primeiro deploy. O check no GitHub passará a ser do Pages em vez do Workers.
+   - **Node version:** em Environment variables, defina `NODE_VERSION` = `20` (recomendado).
+6. Salve e faça o deploy. O check no GitHub passará a ser do Pages e deve passar.
 
 ### Opção B: Só remover o check
 
@@ -27,4 +30,4 @@ Se você **não** quiser usar Cloudflare para este app (por exemplo, já usa Ver
 
 ---
 
-**Resumo:** O "failed in 0s" ocorre porque um **Worker** está ligado a um repo que só tem site estático. Use um projeto **Pages** para este repo ou desconecte o Worker do repo.
+**Resumo:** O erro não é de código, é de configuração no Cloudflare. Foi criado um **Worker** quando deveria ser **Pages**. Delete o Worker "bianutri" e crie um projeto **Pages** conectado ao mesmo repo, com `npm run build` e output `dist`.
