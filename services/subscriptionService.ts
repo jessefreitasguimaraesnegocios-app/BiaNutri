@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient';
+import { supabase, supabaseUrl } from './supabaseClient';
 import type { TrialStatus, AccessStatus } from '../types';
 import { TRIAL_SECONDS_LIMIT } from '../constants/plans';
 
@@ -84,19 +84,47 @@ export function getTrialStatusFromProfile(profile: {
   return 'none';
 }
 
-/** Obtém headers com JWT da sessão para Edge Functions. Tenta atualizar a sessão antes para evitar 401 por token expirado. */
-async function getAuthHeaders(): Promise<Record<string, string>> {
+/** Obtém token JWT atualizado (refresh se necessário) para Edge Functions. */
+async function getAccessToken(): Promise<string | null> {
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) return {};
-  let token = session.access_token;
+  if (!session?.access_token) return null;
   try {
     const { data: { session: refreshed } } = await supabase.auth.refreshSession({ refresh_token: session.refresh_token });
-    if (refreshed?.access_token) token = refreshed.access_token;
+    return refreshed?.access_token ?? session.access_token;
   } catch {
-    // Usa o token atual se o refresh falhar (ex.: offline)
+    return session.access_token;
   }
-  if (!token) return {};
-  return { Authorization: `Bearer ${token}` };
+}
+
+/** Chama Edge Function com JWT no header (evita 401 por header não enviado pelo client). */
+async function invokeWithAuth<T = unknown>(
+  functionName: string,
+  body: Record<string, unknown>
+): Promise<{ data?: T; error?: string }> {
+  const token = await getAccessToken();
+  if (!token) {
+    return { error: 'Faça login para continuar.' };
+  }
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
+    const data = (await res.json().catch(() => ({}))) as T & { error?: string; message?: string };
+    if (!res.ok) {
+      const raw = data as { error?: string; message?: string };
+      const msg = raw?.message ?? raw?.error ?? (res.status === 401 ? 'Sessão expirada. Faça login novamente.' : `Erro ${res.status}`);
+      if (res.status >= 500) console.error(`[${functionName}] ${res.status}:`, raw);
+      return { error: msg };
+    }
+    return { data };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Erro de conexão.' };
+  }
 }
 
 /** Inicia o trial (backend valida telefone e se já foi usado). */
@@ -106,13 +134,11 @@ export async function startTrial(userId: string): Promise<{
   trial_seconds_used?: number;
   trial_used_at?: string | null;
 }> {
-  const headers = await getAuthHeaders();
-  const { data, error } = await supabase.functions.invoke(TRIAL_FUNCTION, {
-    body: { action: 'start', user_id: userId },
-    headers: Object.keys(headers).length ? headers : undefined,
-  });
-  if (error) return { ok: false, error: error.message };
-  const body = data as any;
+  const { data: body, error } = await invokeWithAuth<{ trial_seconds_used?: number; trial_used_at?: string | null; error?: string }>(
+    TRIAL_FUNCTION,
+    { action: 'start', user_id: userId }
+  );
+  if (error) return { ok: false, error };
   if (body?.error) return { ok: false, error: body.error };
   return {
     ok: true,
@@ -131,12 +157,11 @@ export async function incrementTrialTime(
   trial_used_at: string | null;
   exhausted: boolean;
 }> {
-  const headers = await getAuthHeaders();
-  const { data, error } = await supabase.functions.invoke(TRIAL_FUNCTION, {
-    body: { action: 'increment', user_id: userId, seconds },
-    headers: Object.keys(headers).length ? headers : undefined,
-  });
-  if (error) {
+  const { data: body, error } = await invokeWithAuth<{ trial_seconds_used?: number; trial_used_at?: string | null }>(
+    TRIAL_FUNCTION,
+    { action: 'increment', user_id: userId, seconds }
+  );
+  if (error || !body) {
     return {
       ok: false,
       trial_seconds_used: 0,
@@ -144,7 +169,6 @@ export async function incrementTrialTime(
       exhausted: false,
     };
   }
-  const body = data as any;
   return {
     ok: true,
     trial_seconds_used: body?.trial_seconds_used ?? 0,
@@ -198,18 +222,11 @@ export async function createCheckout(
   successUrl: string,
   failureUrl: string
 ): Promise<{ init_point?: string; error?: string }> {
-  const headers = await getAuthHeaders();
-  const { data, error } = await supabase.functions.invoke(MERCADOPAGO_FUNCTION, {
-    body: {
-      user_id: userId,
-      plan_id: planId,
-      success_url: successUrl,
-      failure_url: failureUrl,
-    },
-    headers: Object.keys(headers).length ? headers : undefined,
-  });
-  if (error) return { error: error.message };
-  const body = data as any;
+  const { data: body, error } = await invokeWithAuth<{ init_point?: string; url?: string; error?: string }>(
+    MERCADOPAGO_FUNCTION,
+    { user_id: userId, plan_id: planId, success_url: successUrl, failure_url: failureUrl }
+  );
+  if (error) return { error };
   if (body?.error) return { error: body.error };
   return { init_point: body?.init_point ?? body?.url };
 }
@@ -220,13 +237,11 @@ export async function createSubscriptionCheckout(
   planId: string,
   backUrl: string
 ): Promise<{ init_point?: string; error?: string }> {
-  const headers = await getAuthHeaders();
-  const { data, error } = await supabase.functions.invoke(MERCADOPAGO_SUBSCRIPTION_FUNCTION, {
-    body: { user_id: userId, plan_id: planId, back_url: backUrl },
-    headers: Object.keys(headers).length ? headers : undefined,
-  });
-  if (error) return { error: error.message };
-  const body = data as any;
+  const { data: body, error } = await invokeWithAuth<{ init_point?: string; url?: string; error?: string }>(
+    MERCADOPAGO_SUBSCRIPTION_FUNCTION,
+    { user_id: userId, plan_id: planId, back_url: backUrl }
+  );
+  if (error) return { error };
   if (body?.error) return { error: body.error };
   return { init_point: body?.init_point ?? body?.url };
 }
@@ -250,13 +265,8 @@ export async function getSubscription(userId: string): Promise<{
 
 /** Cancela a assinatura no MP e atualiza no Supabase. */
 export async function cancelSubscription(userId: string): Promise<{ ok: boolean; error?: string }> {
-  const headers = await getAuthHeaders();
-  const { data, error } = await supabase.functions.invoke(MERCADOPAGO_CANCEL_FUNCTION, {
-    body: { user_id: userId },
-    headers: Object.keys(headers).length ? headers : undefined,
-  });
-  if (error) return { ok: false, error: error.message };
-  const body = data as any;
+  const { data: body, error } = await invokeWithAuth<{ error?: string }>(MERCADOPAGO_CANCEL_FUNCTION, { user_id: userId });
+  if (error) return { ok: false, error };
   if (body?.error) return { ok: false, error: body.error };
   return { ok: true };
 }
