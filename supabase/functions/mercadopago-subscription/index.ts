@@ -25,7 +25,7 @@ const AUTO_RECURRING_BY_PLAN: Record<
 > = {
   monthly: { transaction_amount: 39.9, frequency: 1, frequency_type: "months" },
   quarterly: { transaction_amount: 89.7, frequency: 3, frequency_type: "months" },
-  yearly: { transaction_amount: 214.8, frequency: 12, frequency_type: "months" },
+  yearly: { transaction_amount: 0.48, frequency: 12, frequency_type: "months" },
 };
 
 serve(async (req) => {
