@@ -1,6 +1,5 @@
-// Edge Function: cria assinatura com status "pending" via API e retorna init_point (checkout).
-// O checkout público do MP usa preapproval_id (assinatura criada), não preapproval_plan_id (403).
-// Fluxo: POST /preapproval com status=pending (sem card_token_id) → MP devolve init_point.
+// Edge Function: retorna init_point (checkout). Tenta POST /preapproval com status=pending;
+// se a API exigir card_token_id, devolve o link direto do plano (checkout por preapproval_plan_id).
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -9,7 +8,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 const PREAPPROVAL_PLAN_IDS: Record<string, string> = {
   monthly: "926ccca97394458e8f88b54d0d64388d",
   quarterly: "3925655a3e1e43c6984ab3d40c1bf771",
-  yearly: "ef440dc0caf747a8a8c1face5028f644",
+  yearly: "6c132900137a4b349dc28d8118af5913",
 };
 
 const PLAN_REASONS: Record<string, string> = {
@@ -17,6 +16,9 @@ const PLAN_REASONS: Record<string, string> = {
   quarterly: "BiaNutri - 3 meses",
   yearly: "BiaNutri - 1 ano",
 };
+
+/** Link direto do checkout de assinatura (Brasil) quando a API exige card_token_id. */
+const SUBSCRIPTION_CHECKOUT_BASE = "https://www.mercadopago.com.br/subscriptions/checkout";
 
 /** Para fluxo sem plano (assinatura pendente): valor e recorrência por plan_id. */
 const AUTO_RECURRING_BY_PLAN: Record<
@@ -179,40 +181,18 @@ serve(async (req) => {
 
     if (!res.ok) {
       const errMsg = data.message || data.error || "Mercado Pago error";
-      const needsCardToken =
-        typeof errMsg === "string" &&
-        (errMsg.toLowerCase().includes("card_token") || res.status === 400);
-      if (needsCardToken && preapprovalPlanId && AUTO_RECURRING_BY_PLAN[planId]) {
-        const ar = AUTO_RECURRING_BY_PLAN[planId];
-        reqBody = {
-          reason: planReason,
-          external_reference: externalReference,
-          payer_email: payerEmail,
-          back_url: backUrl,
-          status: "pending",
-          auto_recurring: {
-            frequency: ar.frequency,
-            frequency_type: ar.frequency_type,
-            end_date: endDateIso,
-            transaction_amount: ar.transaction_amount,
-            currency_id: "BRL",
-          },
-        };
-        const res2 = await fetch("https://api.mercadopago.com/preapproval", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify(reqBody),
-        });
-        const data2 = (await res2.json()) as { init_point?: string; error?: string; message?: string };
-        if (res2.ok && data2.init_point) {
-          return new Response(
-            JSON.stringify({ init_point: data2.init_point, url: data2.init_point }),
-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
+      const apiWantsCardToken =
+        typeof errMsg === "string" && errMsg.toLowerCase().includes("card_token");
+      if (apiWantsCardToken && preapprovalPlanId) {
+        const params = new URLSearchParams({ preapproval_plan_id: preapprovalPlanId });
+        const isProductionBackUrl =
+          backUrl && !/^https?:\/\/localhost(\d*)(\/|$)/i.test(backUrl);
+        if (isProductionBackUrl) params.set("back_url", backUrl!);
+        const directUrl = `${SUBSCRIPTION_CHECKOUT_BASE}?${params.toString()}`;
+        return new Response(
+          JSON.stringify({ init_point: directUrl, url: directUrl }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
       return new Response(JSON.stringify({ error: errMsg }), {
         status: 502,
