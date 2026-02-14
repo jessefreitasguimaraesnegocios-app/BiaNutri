@@ -185,6 +185,7 @@ serve(async (req) => {
         typeof errMsg === "string" && errMsg.toLowerCase().includes("card_token");
       if (apiWantsCardToken && preapprovalPlanId) {
         const params = new URLSearchParams({ preapproval_plan_id: preapprovalPlanId });
+        if (payerEmail) params.set("payer_email", payerEmail);
         const isProductionBackUrl =
           backUrl && !/^https?:\/\/localhost(\d*)(\/|$)/i.test(backUrl);
         if (isProductionBackUrl) params.set("back_url", backUrl!);
