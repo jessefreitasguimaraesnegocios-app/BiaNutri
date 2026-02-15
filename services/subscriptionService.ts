@@ -6,6 +6,7 @@ const TRIAL_FUNCTION = 'trial';
 const MERCADOPAGO_FUNCTION = 'mercadopago-checkout';
 const MERCADOPAGO_SUBSCRIPTION_FUNCTION = 'mercadopago-subscription';
 const MERCADOPAGO_CANCEL_FUNCTION = 'mercadopago-cancel-subscription';
+const MERCADOPAGO_SYNC_FUNCTION = 'mercadopago-sync-subscription';
 
 /** Normaliza telefone: só dígitos (BR: 10 ou 11 dígitos) */
 export function normalizePhone(phone: string): string {
@@ -215,6 +216,12 @@ export async function getAccessStatus(
   return 'allowed';
 }
 
+/** URL de retorno após pagamento no Mercado Pago (assinatura). */
+export function getSubscriptionBackUrl(): string {
+  if (typeof window === 'undefined') return '';
+  return `${window.location.origin}${window.location.pathname}?payment=success`;
+}
+
 /** Cria preferência no Mercado Pago (pagamento único) e retorna init_point. */
 export async function createCheckout(
   userId: string,
@@ -231,19 +238,36 @@ export async function createCheckout(
   return { init_point: body?.init_point ?? body?.url };
 }
 
-/** Cria assinatura (recurring) via API com external_reference userId|planId e retorna init_point. */
+/** Cria assinatura (recurring). Com card_token_id: cria via API e pode retornar ok; sem: retorna init_point (redirect). */
 export async function createSubscriptionCheckout(
   userId: string,
   planId: string,
-  backUrl: string
-): Promise<{ init_point?: string; error?: string }> {
-  const { data: body, error } = await invokeWithAuth<{ init_point?: string; url?: string; error?: string }>(
-    MERCADOPAGO_SUBSCRIPTION_FUNCTION,
-    { user_id: userId, plan_id: planId, back_url: backUrl }
-  );
+  backUrl: string,
+  cardTokenId?: string
+): Promise<{ init_point?: string; ok?: boolean; error?: string }> {
+  const payload: Record<string, unknown> = { user_id: userId, plan_id: planId, back_url: backUrl };
+  if (cardTokenId) payload.card_token_id = cardTokenId;
+  const { data: body, error } = await invokeWithAuth<{
+    init_point?: string;
+    url?: string;
+    ok?: boolean;
+    error?: string;
+  }>(MERCADOPAGO_SUBSCRIPTION_FUNCTION, payload);
   if (error) return { error };
   if (body?.error) return { error: body.error };
+  if (body?.ok) return { ok: true };
   return { init_point: body?.init_point ?? body?.url };
+}
+
+/** Sincroniza assinaturas do Mercado Pago para o DB (busca por e-mail do usuário). Use antes de "Verificar assinatura". */
+export async function syncSubscriptionFromMP(userId: string): Promise<{ ok: boolean; error?: string }> {
+  const { data: body, error } = await invokeWithAuth<{ ok?: boolean; synced?: boolean; error?: string }>(
+    MERCADOPAGO_SYNC_FUNCTION,
+    { user_id: userId }
+  );
+  if (error) return { ok: false, error };
+  if (body?.error) return { ok: false, error: body.error };
+  return { ok: true };
 }
 
 /** Retorna a assinatura atual do usuário (se houver). */

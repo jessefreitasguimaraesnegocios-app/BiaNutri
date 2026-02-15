@@ -17,6 +17,7 @@
     "supabase:deploy:all": "npx supabase functions deploy"
   },
   "dependencies": {
+    "@mercadopago/sdk-js": "^0.0.3",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.4.2",
     "@supabase/supabase-js": "^2.90.1",

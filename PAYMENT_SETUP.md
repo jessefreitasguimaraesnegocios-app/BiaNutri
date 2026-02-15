@@ -64,8 +64,10 @@ No **Dashboard do Supabase** → **Project Settings** → **Edge Functions** →
 
 **Se a assinatura for aprovada mas não preencher em `subscriptions` e o app não liberar:**
 
-- Confirme que a URL do webhook está correta e que o evento de assinaturas está ativo no painel do MP.
-- No Supabase → Edge Functions → **mercadopago-webhook** → **Logs**: veja se há chamadas do MP e mensagens `[webhook]`. Se não houver chamadas, o MP não está notificando (URL ou evento errado). Se houver "User not found for email", o e-mail do pagador no MP deve ser o mesmo do cadastro no app (tabela `profiles.email`).
+1. **Retorno ao app:** ao voltar do MP com `?payment=success`, o app agora chama a função **mercadopago-sync-subscription** (sincroniza assinaturas do MP por e-mail) e em seguida revalida o acesso. O usuário deve ser liberado sem precisar tocar em "Verificar assinatura", desde que o **e-mail da conta no app seja o mesmo usado no pagamento no Mercado Pago**.
+2. **Webhook:** confirme que a URL do webhook está correta e que o evento de assinaturas está ativo no painel do MP. No Supabase → **mercadopago-webhook** → **Logs**: veja se há chamadas e mensagens `[webhook]`. Se não houver chamadas, o MP não está notificando (URL ou evento errado).
+3. **Sync manual:** peça ao usuário tocar em **"Verificar assinatura"** na paywall; isso chama **mercadopago-sync-subscription** e atualiza a tabela `subscriptions`. Veja os logs dessa função em Supabase para `[sync] MP search result` e `[sync] Subscription synced` ou erros de upsert.
+4. **E-mail:** o e-mail do pagador no MP deve ser o mesmo do cadastro no app (`profiles.email` / conta de login). Se for diferente, a busca por e-mail no MP não encontra a assinatura.
 
 ### 5. URLs de retorno (opcional)
 

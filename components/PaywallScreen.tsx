@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { Sparkles, Check, Loader2, Shield, Zap, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
 import { PLANS, PLANS_ORDER, type PlanId } from '../constants/plans';
-import { createSubscriptionCheckout } from '../services/subscriptionService';
+import { getSubscriptionBackUrl } from '../services/subscriptionService';
+import { useSubscriptionCheckout } from '../hooks/useSubscriptionCheckout';
+import SubscriptionPaymentModal from './SubscriptionPaymentModal';
 
 interface PaywallScreenProps {
   userId: string;
+  userEmail?: string;
   theme: 'light' | 'dark';
   lang: 'pt' | 'en';
   paymentReturn?: 'success' | 'failure' | null;
@@ -48,6 +51,7 @@ const paywallTexts = {
     ],
     secure: 'Pagamento seguro',
     error: 'Erro ao abrir checkout. Tente novamente.',
+    payOnMP: 'Prefere pagar no site do Mercado Pago?',
   },
   en: {
     title: 'Unlock everything',
@@ -65,22 +69,32 @@ const paywallTexts = {
     ],
     secure: 'Secure payment',
     error: 'Error opening checkout. Please try again.',
+    payOnMP: 'Prefer to pay on Mercado Pago website?',
   },
 };
 
 const PaywallScreen: React.FC<PaywallScreenProps> = ({
   userId,
+  userEmail,
   theme,
   lang,
   paymentReturn = null,
   onSuccess,
   onVerifySubscription,
 }) => {
-  const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const t = paywallTexts[lang];
   const bt = paymentBannerTexts[lang];
+  const isDark = theme === 'dark';
+  const backUrl = getSubscriptionBackUrl();
+
+  const payment = useSubscriptionCheckout({
+    userId,
+    backUrl,
+    errorMessage: t.error,
+    onSuccess,
+    onVerifySubscription,
+  });
 
   const handleVerifySubscription = async () => {
     if (!onVerifySubscription || isVerifying) return;
@@ -91,36 +105,6 @@ const PaywallScreen: React.FC<PaywallScreenProps> = ({
       setIsVerifying(false);
     }
   };
-
-  const handleSelectPlan = async (planId: PlanId) => {
-    setError(null);
-    setLoadingPlan(planId);
-    const origin = window.location.origin + window.location.pathname;
-    const backUrl = `${origin}?payment=success`;
-    try {
-      const { init_point, error: err } = await createSubscriptionCheckout(
-        userId,
-        planId,
-        backUrl
-      );
-      if (err) {
-        setError(t.error);
-        setLoadingPlan(null);
-        return;
-      }
-      if (init_point) {
-        window.location.href = init_point;
-        return;
-      }
-      setError(t.error);
-    } catch {
-      setError(t.error);
-    } finally {
-      setLoadingPlan(null);
-    }
-  };
-
-  const isDark = theme === 'dark';
 
   return (
     <div
@@ -212,7 +196,7 @@ const PaywallScreen: React.FC<PaywallScreenProps> = ({
           {PLANS_ORDER.map((planId) => {
             const plan = PLANS[planId];
             const featured = plan.featured === true;
-            const isLoading = loadingPlan === planId;
+            const isLoading = payment.loadingPlan === planId;
 
             return (
               <div
@@ -263,8 +247,8 @@ const PaywallScreen: React.FC<PaywallScreenProps> = ({
                     </div>
                   </div>
                   <button
-                    onClick={() => handleSelectPlan(planId)}
-                    disabled={!!loadingPlan}
+                    onClick={() => payment.handleSelectPlan(planId)}
+                    disabled={!!payment.loadingPlan}
                     className={`w-full mt-4 py-3.5 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${
                       featured
                         ? 'bg-brand-500 hover:bg-brand-600 text-white shadow-lg shadow-brand-500/30'
@@ -291,13 +275,13 @@ const PaywallScreen: React.FC<PaywallScreenProps> = ({
           })}
         </div>
 
-        {error && (
+        {payment.error && (
           <div
             className={`p-3 rounded-xl text-sm ${
               isDark ? 'bg-red-900/20 text-red-300' : 'bg-red-50 text-red-700'
             }`}
           >
-            {error}
+            {payment.error}
           </div>
         )}
 
@@ -333,6 +317,19 @@ const PaywallScreen: React.FC<PaywallScreenProps> = ({
           <span className="font-semibold">Mercado Pago</span>
         </div>
       </div>
+
+      <SubscriptionPaymentModal
+        show={payment.showCardModal}
+        planId={payment.selectedPlanForCard}
+        loadingPlan={payment.loadingPlan}
+        userEmail={userEmail ?? ''}
+        theme={theme}
+        lang={lang}
+        payOnMPLabel={t.payOnMP}
+        onPayWithCard={payment.handlePayWithCard}
+        onPayOnMP={payment.handlePayOnMP}
+        onClose={payment.closeModal}
+      />
     </div>
   );
 };

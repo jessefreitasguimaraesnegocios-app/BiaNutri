@@ -30,6 +30,7 @@ import {
   getSubscriptionActive,
   startTrial,
   incrementTrialTime,
+  syncSubscriptionFromMP,
 } from './services/subscriptionService';
 import type { AccessStatus } from './types';
 import type { Session } from '@supabase/supabase-js';
@@ -177,10 +178,15 @@ function App() {
       url.searchParams.delete('payment');
       window.history.replaceState({}, '', url.pathname + (url.search || ''));
     }
+    const didReturnFromPayment = paymentParam === 'success';
     let cancelled = false;
     (async () => {
       setIsCheckingAccess(true);
       try {
+        if (didReturnFromPayment) {
+          await syncSubscriptionFromMP(userId);
+          if (cancelled) return;
+        }
         const p = await getProfile(userId);
         if (cancelled) return;
         setProfile(p);
@@ -1839,6 +1845,7 @@ function App() {
     return (
       <PaywallScreen
         userId={userId}
+        userEmail={session?.user?.email ?? undefined}
         theme={theme}
         lang={lang}
         paymentReturn={paymentReturn}
@@ -1848,6 +1855,7 @@ function App() {
         }}
         onVerifySubscription={async () => {
           try {
+            await syncSubscriptionFromMP(userId);
             const p = await getProfile(userId);
             setProfile(p);
             const status = await getAccessStatus(userId, p);
@@ -1904,6 +1912,7 @@ function App() {
         <div className="flex-shrink-0 w-full min-w-full snap-start flex flex-col overflow-y-auto">
           <PlansCarouselSlide
             userId={userId!}
+            userEmail={session?.user?.email ?? undefined}
             theme={theme}
             lang={lang}
             showTrialCountdown={isTrialActive}
@@ -1911,6 +1920,7 @@ function App() {
             trialMinutes={TRIAL_MINUTES}
             onVerifySubscription={async () => {
               try {
+                await syncSubscriptionFromMP(userId!);
                 const p = await getProfile(userId!);
                 setProfile(p);
                 const status = await getAccessStatus(userId!, p);

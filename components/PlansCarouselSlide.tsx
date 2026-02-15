@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, Zap, Shield, RefreshCw, XCircle } from 'lucide-react';
 import { PLANS, PLANS_ORDER, type PlanId } from '../constants/plans';
-import {
-  createSubscriptionCheckout,
-  getSubscription,
-  cancelSubscription,
-} from '../services/subscriptionService';
+import { getSubscriptionBackUrl, getSubscription, cancelSubscription } from '../services/subscriptionService';
+import { useSubscriptionCheckout } from '../hooks/useSubscriptionCheckout';
+import SubscriptionPaymentModal from './SubscriptionPaymentModal';
 
 interface PlansCarouselSlideProps {
   userId: string;
+  userEmail?: string;
   theme: 'light' | 'dark';
   lang: 'pt' | 'en';
   /** Exibe cronômetro do trial quando true */
@@ -40,6 +39,7 @@ const texts = {
     cancelling: 'Cancelando...',
     cancelSuccess: 'Assinatura cancelada.',
     cancel: 'Não, manter',
+    payOnMP: 'Prefere pagar no site do Mercado Pago?',
   },
   en: {
     title: 'Plans',
@@ -62,11 +62,13 @@ const texts = {
     cancelling: 'Cancelling...',
     cancelSuccess: 'Subscription cancelled.',
     cancel: 'No, keep it',
+    payOnMP: 'Prefer to pay on Mercado Pago website?',
   },
 };
 
 const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
   userId,
+  userEmail,
   theme,
   lang,
   showTrialCountdown,
@@ -74,8 +76,6 @@ const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
   trialMinutes,
   onVerifySubscription,
 }) => {
-  const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [subscription, setSubscription] = useState<{
     plan_id: string;
@@ -86,6 +86,22 @@ const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const t = texts[lang];
   const isDark = theme === 'dark';
+  const backUrl = getSubscriptionBackUrl();
+
+  const payment = useSubscriptionCheckout({
+    userId,
+    backUrl,
+    errorMessage: t.error,
+    onVerifySubscription: async () => {
+      await onVerifySubscription?.();
+      const sub = await getSubscription(userId);
+      if (sub && sub.status === 'active' && new Date(sub.valid_until) > new Date()) {
+        setSubscription({ plan_id: sub.plan_id, status: sub.status, valid_until: sub.valid_until });
+      } else {
+        setSubscription(null);
+      }
+    },
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -102,7 +118,7 @@ const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
   const handleVerifySubscription = async () => {
     if (!onVerifySubscription || isVerifying) return;
     setIsVerifying(true);
-    setError(null);
+    payment.setError(null);
     try {
       await onVerifySubscription();
       const sub = await getSubscription(userId);
@@ -112,7 +128,7 @@ const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
         setSubscription(null);
       }
     } catch {
-      setError(lang === 'pt' ? 'Não foi possível verificar. Tente novamente.' : 'Could not verify. Please try again.');
+      payment.setError(lang === 'pt' ? 'Não foi possível verificar. Tente novamente.' : 'Could not verify. Please try again.');
     } finally {
       setIsVerifying(false);
     }
@@ -124,7 +140,7 @@ const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
       return;
     }
     setIsCancelling(true);
-    setError(null);
+    payment.setError(null);
     try {
       const res = await cancelSubscription(userId);
       if (res.ok) {
@@ -132,39 +148,10 @@ const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
         setShowCancelConfirm(false);
         if (onVerifySubscription) await onVerifySubscription();
       } else {
-        setError(res.error ?? t.error);
+        payment.setError(res.error ?? t.error);
       }
     } finally {
       setIsCancelling(false);
-    }
-  };
-
-  const handleSelectPlan = async (planId: PlanId) => {
-    setError(null);
-    setLoadingPlan(planId);
-    const origin = window.location.origin + window.location.pathname;
-    const backUrl = `${origin}?payment=success`;
-    try {
-      // Assinatura via API: external_reference = userId|planId (webhook identifica 100% pelo ID)
-      const { init_point, error: err } = await createSubscriptionCheckout(
-        userId,
-        planId,
-        backUrl
-      );
-      if (err) {
-        setError(t.error);
-        setLoadingPlan(null);
-        return;
-      }
-      if (init_point) {
-        window.location.href = init_point;
-        return;
-      }
-      setError(t.error);
-    } catch {
-      setError(t.error);
-    } finally {
-      setLoadingPlan(null);
     }
   };
 
@@ -210,7 +197,7 @@ const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
         {PLANS_ORDER.map((planId) => {
           const plan = PLANS[planId];
           const featured = plan.featured === true;
-          const isLoading = loadingPlan === planId;
+          const isLoading = payment.loadingPlan === planId;
           return (
             <div
               key={planId}
@@ -273,8 +260,8 @@ const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
                   </div>
                 </div>
                 <button
-                  onClick={() => handleSelectPlan(planId)}
-                  disabled={!!loadingPlan}
+                  onClick={() => payment.handleSelectPlan(planId)}
+                  disabled={!!payment.loadingPlan}
                   className={`w-full mt-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${
                     featured
                       ? 'py-4 px-4 text-base bg-brand-500 hover:bg-brand-600 text-white shadow-lg shadow-brand-500/30'
@@ -301,13 +288,13 @@ const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
         })}
       </div>
 
-      {error && (
+      {payment.error && (
         <div
           className={`p-3 rounded-xl text-sm ${
             isDark ? 'bg-red-900/20 text-red-300' : 'bg-red-50 text-red-700'
           }`}
         >
-          {error}
+          {payment.error}
         </div>
       )}
 
@@ -396,6 +383,19 @@ const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
         <span>{t.secure}</span>
         <span className="font-semibold">Mercado Pago</span>
       </div>
+
+      <SubscriptionPaymentModal
+        show={payment.showCardModal}
+        planId={payment.selectedPlanForCard}
+        loadingPlan={payment.loadingPlan}
+        userEmail={userEmail ?? ''}
+        theme={theme}
+        lang={lang}
+        payOnMPLabel={t.payOnMP}
+        onPayWithCard={payment.handlePayWithCard}
+        onPayOnMP={payment.handlePayOnMP}
+        onClose={payment.closeModal}
+      />
     </div>
   );
 };

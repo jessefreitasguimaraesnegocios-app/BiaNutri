@@ -20,6 +20,13 @@ const PLAN_REASONS: Record<string, string> = {
 /** Link direto do checkout de assinatura (Brasil) quando a API exige card_token_id. */
 const SUBSCRIPTION_CHECKOUT_BASE = "https://www.mercadopago.com.br/subscriptions/checkout";
 
+/** Duração em meses por plan_id (para gravar valid_until ao criar via API com cartão). */
+const DURATION_MONTHS: Record<string, number> = {
+  monthly: 1,
+  quarterly: 3,
+  yearly: 12,
+};
+
 /** Para fluxo sem plano (assinatura pendente): valor e recorrência por plan_id. */
 const AUTO_RECURRING_BY_PLAN: Record<
   string,
@@ -73,7 +80,7 @@ serve(async (req) => {
       );
     }
 
-    let body: { user_id?: string; plan_id?: string; back_url?: string };
+    let body: { user_id?: string; plan_id?: string; back_url?: string; card_token_id?: string };
     try {
       body = (await req.json()) as typeof body;
     } catch {
@@ -116,6 +123,87 @@ serve(async (req) => {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // —— Fluxo profissional: criar assinatura via API com cartão (card_token_id) ——
+    const cardTokenId = (body.card_token_id ?? "").trim();
+    if (cardTokenId && preapprovalPlanId) {
+      const authorizedBody = {
+        preapproval_plan_id: preapprovalPlanId,
+        reason: planReason,
+        external_reference: externalReference,
+        payer_email: payerEmail,
+        back_url: backUrl,
+        card_token_id: cardTokenId,
+        status: "authorized",
+      };
+      let authRes: Response;
+      try {
+        authRes = await fetch("https://api.mercadopago.com/preapproval", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify(authorizedBody),
+        });
+      } catch (fetchErr) {
+        const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
+        console.error("Mercado Pago preapproval (card) error:", msg);
+        return new Response(
+          JSON.stringify({ error: "Mercado Pago request failed", message: msg }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const authData = (await authRes.json()) as {
+        id?: string;
+        status?: string;
+        init_point?: string;
+        error?: string;
+        message?: string;
+      };
+      if (!authRes.ok) {
+        return new Response(
+          JSON.stringify({ error: authData.message || authData.error || "Mercado Pago error" }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (authData.init_point) {
+        return new Response(
+          JSON.stringify({ init_point: authData.init_point, url: authData.init_point }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const status = (authData.status ?? "").toLowerCase();
+      if ((status === "authorized" || status === "approved") && authData.id) {
+        const months = DURATION_MONTHS[planId] ?? 1;
+        const validUntil = new Date();
+        validUntil.setMonth(validUntil.getMonth() + months);
+        const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const admin = createClient(supabaseUrl, supabaseServiceKey);
+        const { error: upsertErr } = await admin
+          .from("subscriptions")
+          .upsert(
+            {
+              user_id: user.id,
+              plan_id: planId,
+              mp_payment_id: authData.id,
+              status: "active",
+              valid_until: validUntil.toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "user_id", ignoreDuplicates: false }
+          );
+        if (upsertErr) console.error("Subscription upsert (card) error:", upsertErr);
+        return new Response(
+          JSON.stringify({ ok: true, subscription_id: authData.id }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      return new Response(
+        JSON.stringify({ init_point: authData.init_point || "", ok: false }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const endDate = new Date();
