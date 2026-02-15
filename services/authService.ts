@@ -101,6 +101,15 @@ export const signUp = async (email: string, password: string): Promise<AuthRespo
   }
 };
 
+// Enviar e-mail para redefinir senha (link de recuperação)
+export const resetPasswordForEmail = async (email: string): Promise<{ error: AuthError | null }> => {
+  const redirectTo = `${window.location.origin}${window.location.pathname}`;
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+    redirectTo,
+  });
+  return { error };
+};
+
 // Logout — apenas encerra a sessão; os dados ficam salvos por usuário (chaves biaNutri*_userId)
 export const signOut = async (): Promise<{ error: AuthError | null }> => {
   try {

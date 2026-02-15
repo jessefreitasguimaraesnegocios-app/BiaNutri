@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Check, Loader2, Shield, Zap, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
+import { Sparkles, Check, Loader2, Shield, Zap, CheckCircle2, XCircle, RefreshCw, ArrowLeft } from 'lucide-react';
 import { PLANS, PLANS_ORDER, type PlanId } from '../constants/plans';
 import { getSubscriptionBackUrl } from '../services/subscriptionService';
 import { useSubscriptionCheckout } from '../hooks/useSubscriptionCheckout';
@@ -13,6 +13,8 @@ interface PaywallScreenProps {
   paymentReturn?: 'success' | 'failure' | null;
   onSuccess?: () => void;
   onVerifySubscription?: () => Promise<void>;
+  /** Voltar à tela de login (faz logout) */
+  onBackToLogin?: () => void | Promise<void>;
 }
 
 const paymentBannerTexts = {
@@ -52,6 +54,7 @@ const paywallTexts = {
     secure: 'Pagamento seguro',
     error: 'Erro ao abrir checkout. Tente novamente.',
     payOnMP: 'Prefere pagar no site do Mercado Pago?',
+    backToLogin: 'Voltar ao login',
   },
   en: {
     title: 'Unlock everything',
@@ -70,6 +73,7 @@ const paywallTexts = {
     secure: 'Secure payment',
     error: 'Error opening checkout. Please try again.',
     payOnMP: 'Prefer to pay on Mercado Pago website?',
+    backToLogin: 'Back to login',
   },
 };
 
@@ -81,6 +85,7 @@ const PaywallScreen: React.FC<PaywallScreenProps> = ({
   paymentReturn = null,
   onSuccess,
   onVerifySubscription,
+  onBackToLogin,
 }) => {
   const [isVerifying, setIsVerifying] = useState(false);
   const t = paywallTexts[lang];
@@ -113,6 +118,22 @@ const PaywallScreen: React.FC<PaywallScreenProps> = ({
       } flex flex-col items-center p-4 pb-12`}
     >
       <div className="w-full max-w-md flex flex-col gap-6">
+        {onBackToLogin && (
+          <div className="w-full flex justify-start -mt-1 mb-2">
+            <button
+              type="button"
+              onClick={() => onBackToLogin()}
+              className={`inline-flex items-center gap-2 py-2.5 px-3 rounded-xl text-sm font-medium transition-colors ${
+                isDark
+                  ? 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <ArrowLeft size={18} />
+              {t.backToLogin}
+            </button>
+          </div>
+        )}
         {/* Banner: Pagamento aprovado / falhou */}
         {paymentReturn === 'success' && (
           <div

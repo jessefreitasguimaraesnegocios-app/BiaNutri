@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Mail, Lock, LogIn, UserPlus, Eye, EyeOff } from 'lucide-react';
-import { signIn, signUp } from '../services/authService';
+import { signIn, signUp, resetPasswordForEmail } from '../services/authService';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -12,6 +12,7 @@ interface LoginModalProps {
 
 const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSuccess, theme, lang }) => {
   const [isSignUp, setIsSignUp] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -19,6 +20,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSuccess, the
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [forgotSuccess, setForgotSuccess] = useState(false);
 
   if (!isOpen) return null;
 
@@ -41,6 +43,10 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSuccess, the
       signupSuccess: 'Conta criada com sucesso!',
       passwordsDontMatch: 'As senhas não coincidem',
       passwordTooShort: 'A senha deve ter pelo menos 6 caracteres',
+      forgotPassword: 'Esqueci minha senha',
+      sendResetLink: 'Enviar link de redefinição',
+      backToLoginForm: 'Voltar ao login',
+      resetEmailSent: 'Se este e-mail estiver cadastrado, você receberá um link para redefinir a senha. Verifique sua caixa de entrada.',
     },
     en: {
       login: 'Sign In',
@@ -60,10 +66,33 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSuccess, the
       signupSuccess: 'Account created successfully!',
       passwordsDontMatch: 'Passwords do not match',
       passwordTooShort: 'Password must be at least 6 characters',
+      forgotPassword: 'Forgot password',
+      sendResetLink: 'Send reset link',
+      backToLoginForm: 'Back to login',
+      resetEmailSent: 'If this email is registered, you will receive a link to reset your password. Check your inbox.',
     },
   };
 
   const t = texts[lang];
+
+  const handleForgotSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    setForgotSuccess(false);
+    try {
+      const { error: err } = await resetPasswordForEmail(email);
+      if (err) {
+        setError(err.message || (lang === 'pt' ? 'Erro ao enviar e-mail.' : 'Error sending email.'));
+      } else {
+        setForgotSuccess(true);
+      }
+    } catch (err: any) {
+      setError(err?.message || (lang === 'pt' ? 'Erro ao enviar.' : 'Error.'));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -227,9 +256,77 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSuccess, the
           <h2 className={`text-2xl font-bold text-center mb-2 ${
             theme === 'dark' ? 'text-white' : 'text-slate-900'
           }`}>
-            {isSignUp ? t.signup : t.login}
+            {showForgotPassword ? (lang === 'pt' ? 'Redefinir senha' : 'Reset password') : isSignUp ? t.signup : t.login}
           </h2>
 
+          {showForgotPassword ? (
+            <form onSubmit={handleForgotSubmit} className="space-y-4 mt-6">
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${
+                  theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                }`}>
+                  {t.email}
+                </label>
+                <div className="relative">
+                  <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 ${
+                    theme === 'dark' ? 'text-slate-400' : 'text-slate-500'
+                  }`} size={20} />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className={`w-full pl-10 pr-4 py-3 rounded-xl border ${
+                      theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
+                        : 'bg-white border-slate-300 text-slate-900 placeholder-slate-500'
+                    } focus:outline-none focus:ring-2 focus:ring-brand-500`}
+                    placeholder={t.email}
+                  />
+                </div>
+              </div>
+              {error && (
+                <div className={`p-3 rounded-xl text-sm ${
+                  theme === 'dark'
+                    ? 'bg-red-900/20 border border-red-800 text-red-300'
+                    : 'bg-red-50 border border-red-200 text-red-700'
+                }`}>
+                  {error}
+                </div>
+              )}
+              {forgotSuccess && (
+                <div className={`p-3 rounded-xl text-sm ${
+                  theme === 'dark'
+                    ? 'bg-emerald-900/20 border border-emerald-700 text-emerald-200'
+                    : 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+                }`}>
+                  {t.resetEmailSent}
+                </div>
+              )}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 px-4 rounded-xl font-semibold bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors"
+              >
+                {loading ? (lang === 'pt' ? 'Enviando...' : 'Sending...') : t.sendResetLink}
+              </button>
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotPassword(false);
+                    setError(null);
+                    setForgotSuccess(false);
+                  }}
+                  className={`text-sm font-medium ${
+                    theme === 'dark' ? 'text-brand-400 hover:text-brand-300' : 'text-brand-600 hover:text-brand-700'
+                  }`}
+                >
+                  {t.backToLoginForm}
+                </button>
+              </div>
+            </form>
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-4 mt-6">
             <div>
               <label className={`block text-sm font-medium mb-2 ${
@@ -292,6 +389,22 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSuccess, the
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
+              {!isSignUp && (
+                <div className="flex justify-end mt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForgotPassword(true);
+                      setError(null);
+                    }}
+                    className={`text-sm font-medium ${
+                      theme === 'dark' ? 'text-slate-400 hover:text-brand-400' : 'text-slate-500 hover:text-brand-600'
+                    }`}
+                  >
+                    {t.forgotPassword}
+                  </button>
+                </div>
+              )}
             </div>
 
             {isSignUp && (
@@ -373,7 +486,9 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSuccess, the
               )}
             </button>
           </form>
+          )}
 
+          {!showForgotPassword && (
           <div className="mt-6 text-center">
             <button
               onClick={() => {
@@ -395,6 +510,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSuccess, the
               </span>
             </button>
           </div>
+          )}
         </div>
       </div>
     </div>

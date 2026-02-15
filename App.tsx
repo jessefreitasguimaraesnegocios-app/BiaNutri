@@ -1866,6 +1866,24 @@ function App() {
             setAccessStatus('paywall');
           }
         }}
+        onBackToLogin={async () => {
+          try {
+            await signOut();
+            setSession(null);
+            setProfile(null);
+            setAccessStatus(null);
+            setHistory([]);
+            setDailyTarget(null);
+            setWaterEntries([]);
+            setWaterGoal(2000);
+            setCurrentMeal(null);
+            setCurrentData(null);
+            setFoodPortions({});
+            setError(null);
+          } catch (e) {
+            console.error('Erro ao sair:', e);
+          }
+        }}
       />
     );
   }
