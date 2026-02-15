@@ -33,8 +33,8 @@ export const PLANS: Record<PlanId, PlanOption> = {
   },
   yearly: {
     id: 'yearly',
-    pricePerMonth: 1,
-    totalPrice: 12.00,
+    pricePerMonth: 17.99,
+    totalPrice: 215.88,
     durationMonths: 12,
     labelShort: '1 ano',
     featured: true,
