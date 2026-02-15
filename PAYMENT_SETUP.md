@@ -45,19 +45,27 @@ No **Dashboard do Supabase** → **Project Settings** → **Edge Functions** →
 
 (O `SUPABASE_URL`, `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` já existem no ambiente das Edge Functions.)
 
-### 4. Webhook no Mercado Pago
+### 4. Webhook no Mercado Pago (obrigatório para liberar acesso após assinatura)
 
-1. Acesse o [painel do Mercado Pago](https://www.mercadopago.com.br/developers/panel/app) → sua aplicação → **Webhooks**.
-2. **URL de notificação** deve ser a URL da Edge Function `mercadopago-webhook`:
+1. Acesse o [painel do Mercado Pago](https://www.mercadopago.com.br/developers/panel/app) → sua aplicação → **Webhooks** (ou Notificações).
+2. **URL de notificação** deve ser exatamente a URL da Edge Function:
 
    ```
-   https://<SEU_PROJECT_REF>.supabase.co/functions/v1/mercadopago-webhook
+   https://lypnxkbbxeagehrqpuoj.supabase.co/functions/v1/mercadopago-webhook
    ```
 
-   Substitua `<SEU_PROJECT_REF>` pelo ref do projeto (ex.: `lypnxkbbxeagehrqpuoj`).
-3. Eventos: marque **Pagamentos** e **Assinaturas** (preapproval), para cobranças únicas e assinaturas.
+   (Use o ref do seu projeto se for outro.)
+3. **Eventos**: ative **Planos e assinaturas** / **Plans and Subscriptions** (ou **subscription_preapproval**) para que o MP avise quando uma assinatura for autorizada. Se houver opção para **Pagamentos**, marque também para cobranças únicas.
+4. A função `mercadopago-webhook` deve ser publicada **sem verificação JWT** para o MP conseguir chamar:
 
-Assim, quando um pagamento/assinatura for aprovado, o MP chama essa URL e a função atualiza a tabela `subscriptions` (usando `external_reference = userId|planId`), liberando o acesso no app. O usuário também pode cancelar a assinatura pelo app (função `mercadopago-cancel-subscription`).
+   ```bash
+   npx supabase functions deploy mercadopago-webhook --no-verify-jwt
+   ```
+
+**Se a assinatura for aprovada mas não preencher em `subscriptions` e o app não liberar:**
+
+- Confirme que a URL do webhook está correta e que o evento de assinaturas está ativo no painel do MP.
+- No Supabase → Edge Functions → **mercadopago-webhook** → **Logs**: veja se há chamadas do MP e mensagens `[webhook]`. Se não houver chamadas, o MP não está notificando (URL ou evento errado). Se houver "User not found for email", o e-mail do pagador no MP deve ser o mesmo do cadastro no app (tabela `profiles.email`).
 
 ### 5. URLs de retorno (opcional)
 

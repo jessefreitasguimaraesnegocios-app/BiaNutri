@@ -19,6 +19,7 @@ const PREAPPROVAL_PLAN_TO_PLAN_ID: Record<string, string> = {
   "926ccca97394458e8f88b54d0d64388d": "monthly",
   "3925655a3e1e43c6984ab3d40c1bf771": "quarterly",
   "ef440dc0caf747a8a8c1face5028f644": "yearly",
+  "6c132900137a4b349dc28d8118af5913": "yearly",
 };
 
 serve(async (req) => {
@@ -46,11 +47,14 @@ serve(async (req) => {
     };
     resourceId = body?.data?.id ?? body?.id ?? null;
     notificationType = body?.type ?? body?.action;
-  } catch {
+    console.log("[webhook] MP notification", { type: notificationType, resourceId, hasData: !!body?.data });
+  } catch (e) {
     const url = new URL(req.url);
     resourceId = url.searchParams.get("id");
+    console.log("[webhook] parse body failed, id from query", resourceId, e);
   }
   if (!resourceId) {
+    console.log("[webhook] no resourceId, skipping");
     return new Response("ok", { status: 200, headers: corsHeaders });
   }
 
@@ -69,6 +73,7 @@ serve(async (req) => {
       status?: string;
       external_reference?: string;
     };
+    console.log("[webhook] payment found", { status: payment.status, ref: payment.external_reference });
     if (payment.status === "approved") {
       const ref = payment.external_reference;
       if (ref && ref.includes("|")) {
@@ -102,6 +107,7 @@ serve(async (req) => {
     { headers: authHeader }
   );
   if (!preapprovalRes.ok) {
+    console.log("[webhook] preapproval fetch not ok", preapprovalRes.status, resourceId);
     return new Response("ok", { status: 200, headers: corsHeaders });
   }
 
@@ -114,7 +120,14 @@ serve(async (req) => {
     external_reference?: string;
   };
   const status = (preapproval.status ?? "").toLowerCase();
+  console.log("[webhook] preapproval", {
+    status,
+    plan_id_mp: preapproval.preapproval_plan_id,
+    external_ref: preapproval.external_reference,
+    payer_email: preapproval.payer_email ?? preapproval.payer?.email,
+  });
   if (status !== "authorized" && status !== "approved") {
+    console.log("[webhook] preapproval status not authorized/approved, skipping");
     return new Response("ok", { status: 200, headers: corsHeaders });
   }
 
@@ -126,7 +139,7 @@ serve(async (req) => {
       : "";
   }
   if (!planId || !DURATION_MONTHS[planId]) {
-    console.error("Unknown preapproval_plan_id or invalid external_reference", planIdFromMP);
+    console.error("[webhook] Unknown preapproval_plan_id or invalid external_reference", planIdFromMP, "planId", planId);
     return new Response("ok", { status: 200, headers: corsHeaders });
   }
 
@@ -138,7 +151,7 @@ serve(async (req) => {
   if (!userId) {
     const payerEmail = (preapproval.payer_email ?? preapproval.payer?.email ?? "").trim().toLowerCase();
     if (!payerEmail) {
-      console.error("No payer email or external_reference in preapproval", resourceId);
+      console.error("[webhook] No payer email or external_reference in preapproval", resourceId);
       return new Response("ok", { status: 200, headers: corsHeaders });
     }
     const { data: profile, error: profileError } = await admin
@@ -147,10 +160,11 @@ serve(async (req) => {
       .ilike("email", payerEmail)
       .maybeSingle();
     if (profileError || !profile?.id) {
-      console.error("User not found for email", payerEmail, profileError?.message);
+      console.error("[webhook] User not found for email", payerEmail, profileError?.message);
       return new Response("ok", { status: 200, headers: corsHeaders });
     }
     userId = profile.id;
+    console.log("[webhook] userId from email", userId);
   }
 
   const months = DURATION_MONTHS[planId] ?? 1;
@@ -173,7 +187,9 @@ serve(async (req) => {
   );
 
   if (upsertError) {
-    console.error("Subscription upsert error (preapproval)", upsertError);
+    console.error("[webhook] Subscription upsert error (preapproval)", upsertError);
+  } else {
+    console.log("[webhook] Subscription upserted", { user_id: userId, plan_id: planId, valid_until: validUntil.toISOString() });
   }
 
   return new Response("ok", { status: 200, headers: corsHeaders });
