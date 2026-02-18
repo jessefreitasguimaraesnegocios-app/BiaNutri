@@ -10,10 +10,13 @@ interface PlansCarouselSlideProps {
   userEmail?: string;
   theme: 'light' | 'dark';
   lang: 'pt' | 'en';
-  /** Exibe cronômetro do trial quando true */
+  /** Exibe a caixa de trial (cronômetro ou mensagem) quando true */
+  showTrialSection: boolean;
+  /** Exibe o cronômetro MM:SS quando true; senão mostra mensagem estática */
   showTrialCountdown: boolean;
   trialDisplayRemainingSeconds: number;
   trialMinutes: number;
+  profileTrialUsedAt: string | null;
   onVerifySubscription?: () => Promise<void>;
 }
 
@@ -30,6 +33,8 @@ const texts = {
     trialLabel: 'Teste grátis',
     trialOf: 'de',
     trialMin: 'min',
+    trialYouHave: 'Você tem 30 min de teste grátis',
+    trialEnded: 'Trial encerrado — assine para continuar',
     verifySubscription: 'Verificar assinatura',
     verifying: 'Verificando...',
     yourSubscription: 'Sua assinatura',
@@ -53,6 +58,8 @@ const texts = {
     trialLabel: 'Free trial',
     trialOf: 'of',
     trialMin: 'min',
+    trialYouHave: 'You have 30 min free trial',
+    trialEnded: 'Trial ended — subscribe to continue',
     verifySubscription: 'Verify subscription',
     verifying: 'Verifying...',
     yourSubscription: 'Your subscription',
@@ -71,9 +78,11 @@ const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
   userEmail,
   theme,
   lang,
+  showTrialSection,
   showTrialCountdown,
   trialDisplayRemainingSeconds,
   trialMinutes,
+  profileTrialUsedAt,
   onVerifySubscription,
 }) => {
   const [isVerifying, setIsVerifying] = useState(false);
@@ -157,30 +166,40 @@ const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
 
   return (
     <div className="w-full min-w-full max-w-md mx-auto px-4 py-4 pb-8 flex flex-col gap-5 overflow-y-auto">
-      {/* Cronômetro do trial */}
-      {showTrialCountdown && (
+      {/* Caixa de trial: cronômetro ou mensagem */}
+      {showTrialSection && (
         <div className="rounded-2xl bg-brand-500/15 dark:bg-brand-500/20 border-2 border-brand-500/40 px-4 py-4 shadow-lg">
           <div className="flex items-center justify-between gap-3 mb-2">
             <span className="text-sm font-semibold text-brand-700 dark:text-brand-300">
               {t.trialLabel}
             </span>
-            <span className="text-2xl font-bold text-brand-700 dark:text-brand-200 tabular-nums tracking-wider">
-              {String(Math.floor(trialDisplayRemainingSeconds / 60)).padStart(2, '0')}
-              <span className="text-brand-500/80 mx-1">:</span>
-              {String(trialDisplayRemainingSeconds % 60).padStart(2, '0')}
-            </span>
-            <span className="text-sm text-brand-600 dark:text-brand-400 tabular-nums">
-              {t.trialOf} {trialMinutes} {t.trialMin}
-            </span>
+            {showTrialCountdown ? (
+              <>
+                <span className="text-2xl font-bold text-brand-700 dark:text-brand-200 tabular-nums tracking-wider">
+                  {String(Math.floor(trialDisplayRemainingSeconds / 60)).padStart(2, '0')}
+                  <span className="text-brand-500/80 mx-1">:</span>
+                  {String(trialDisplayRemainingSeconds % 60).padStart(2, '0')}
+                </span>
+                <span className="text-sm text-brand-600 dark:text-brand-400 tabular-nums">
+                  {t.trialOf} {trialMinutes} {t.trialMin}
+                </span>
+              </>
+            ) : (
+              <span className="text-sm font-medium text-brand-700 dark:text-brand-300">
+                {profileTrialUsedAt ? t.trialEnded : t.trialYouHave}
+              </span>
+            )}
           </div>
-          <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-brand-500 transition-all duration-500"
-              style={{
-                width: `${Math.min(100, ((trialMinutes * 60 - trialDisplayRemainingSeconds) / (trialMinutes * 60)) * 100)}%`,
-              }}
-            />
-          </div>
+          {showTrialCountdown && (
+            <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-brand-500 transition-all duration-500"
+                style={{
+                  width: `${Math.min(100, ((trialMinutes * 60 - trialDisplayRemainingSeconds) / (trialMinutes * 60)) * 100)}%`,
+                }}
+              />
+            </div>
+          )}
         </div>
       )}
 

@@ -197,12 +197,9 @@ function App() {
           const start = await startTrial(userId);
           if (cancelled) return;
           if (start.ok) {
-            setProfile(prev => prev ? {
-              ...prev,
-              trial_started_at: new Date().toISOString(),
-              trial_seconds_used: 0,
-              trial_used_at: null,
-            } : null);
+            const pUpdated = await getProfile(userId);
+            if (!cancelled && pUpdated) setProfile(pUpdated);
+            else if (!cancelled && p) setProfile({ ...p, trial_started_at: new Date().toISOString(), trial_seconds_used: 0, trial_used_at: null });
           }
         }
       } catch (e) {
@@ -215,10 +212,10 @@ function App() {
     return () => { cancelled = true; };
   }, [userId]);
 
-  // Contador de trial: a cada 15s incrementa tempo de uso enquanto app está em foco
+  // Contador de trial: a cada 15s incrementa tempo de uso enquanto app está em foco (só após trial iniciado no backend)
   useEffect(() => {
     if (!userId || accessStatus !== 'allowed' || !profile) return;
-    if (profile.trial_used_at || (profile.trial_seconds_used >= TRIAL_SECONDS_LIMIT)) return;
+    if (!profile.trial_started_at || profile.trial_used_at || (profile.trial_seconds_used >= TRIAL_SECONDS_LIMIT)) return;
     const tick = async () => {
       const res = await incrementTrialTime(userId, 15);
       setProfile(prev => prev ? {
@@ -226,6 +223,7 @@ function App() {
         trial_seconds_used: res.trial_seconds_used,
         trial_used_at: res.trial_used_at ?? prev.trial_used_at,
       } : null);
+      setTrialDisplayRemainingSeconds(Math.max(0, TRIAL_SECONDS_LIMIT - res.trial_seconds_used));
       if (res.exhausted) setAccessStatus('paywall');
     };
     const id = setInterval(tick, 15000);
@@ -234,7 +232,7 @@ function App() {
       if (trialIntervalRef.current) clearInterval(trialIntervalRef.current);
       trialIntervalRef.current = null;
     };
-  }, [userId, accessStatus, profile?.trial_seconds_used, profile?.trial_used_at]);
+  }, [userId, accessStatus, profile?.trial_started_at, profile?.trial_seconds_used, profile?.trial_used_at]);
 
   // Cronômetro do trial: atualiza a cada 1s e sincroniza com o servidor quando profile.trial_seconds_used muda
   const isTrialActive =
@@ -252,6 +250,7 @@ function App() {
     }
   }, [profile?.trial_started_at, profile?.trial_seconds_used, profile?.trial_used_at, TRIAL_SECONDS_LIMIT]);
 
+  // Cronômetro que diminui a cada 1s; não depender de profile.trial_seconds_used para não recriar o interval e resetar o valor
   useEffect(() => {
     if (!isTrialActive) return;
     const remaining = Math.max(0, TRIAL_SECONDS_LIMIT - (profile?.trial_seconds_used ?? 0));
@@ -260,7 +259,7 @@ function App() {
       setTrialDisplayRemainingSeconds((prev) => Math.max(0, prev - 1));
     }, 1000);
     return () => clearInterval(id);
-  }, [isTrialActive, profile?.trial_seconds_used, TRIAL_SECONDS_LIMIT]);
+  }, [isTrialActive, TRIAL_SECONDS_LIMIT]); // profile?.trial_seconds_used só na montagem; sync a cada 15s no callback do increment
 
   // Ao obter acesso (login), redirecionar para Home uma vez; não redirecionar de novo ao navegar
   useEffect(() => {
@@ -1943,9 +1942,11 @@ function App() {
             userEmail={session?.user?.email ?? undefined}
             theme={theme}
             lang={lang}
+            showTrialSection={accessStatus === 'allowed' && !!profile?.phone}
             showTrialCountdown={isTrialActive}
             trialDisplayRemainingSeconds={trialDisplayRemainingSeconds}
             trialMinutes={TRIAL_MINUTES}
+            profileTrialUsedAt={profile?.trial_used_at ?? null}
             onVerifySubscription={async () => {
               try {
                 await syncSubscriptionFromMP(userId!);
@@ -1966,30 +1967,42 @@ function App() {
 
         {/* Slide 1 (centro): Home (trial strip + conteúdo principal) */}
         <div className="flex-shrink-0 w-full min-w-full snap-start flex flex-col overflow-y-auto">
-          {isTrialActive && (
+          {accessStatus === 'allowed' && profile?.phone && (
             <div className="max-w-md mx-auto px-4 pt-1 pb-2 flex-shrink-0">
               <div className="rounded-xl bg-brand-500/15 dark:bg-brand-500/20 border border-brand-500/30 px-3 py-2.5">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-semibold text-brand-700 dark:text-brand-300">
                     {lang === 'pt' ? 'Teste grátis' : 'Free trial'}
                   </span>
-                  <span className="text-lg font-bold text-brand-700 dark:text-brand-200 tabular-nums tracking-wider" aria-label={lang === 'pt' ? 'Tempo restante' : 'Time remaining'}>
-                    {String(Math.floor(trialDisplayRemainingSeconds / 60)).padStart(2, '0')}
-                    <span className="text-brand-500/80 mx-0.5">:</span>
-                    {String(trialDisplayRemainingSeconds % 60).padStart(2, '0')}
-                  </span>
-                  <span className="text-xs text-brand-600 dark:text-brand-400 tabular-nums">
-                    {lang === 'pt' ? `de ${TRIAL_MINUTES} min` : `of ${TRIAL_MINUTES} min`}
-                  </span>
+                  {isTrialActive ? (
+                    <>
+                      <span className="text-lg font-bold text-brand-700 dark:text-brand-200 tabular-nums tracking-wider" aria-label={lang === 'pt' ? 'Tempo restante' : 'Time remaining'}>
+                        {String(Math.floor(trialDisplayRemainingSeconds / 60)).padStart(2, '0')}
+                        <span className="text-brand-500/80 mx-0.5">:</span>
+                        {String(trialDisplayRemainingSeconds % 60).padStart(2, '0')}
+                      </span>
+                      <span className="text-xs text-brand-600 dark:text-brand-400 tabular-nums">
+                        {lang === 'pt' ? `de ${TRIAL_MINUTES} min` : `of ${TRIAL_MINUTES} min`}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-sm font-medium text-brand-700 dark:text-brand-300">
+                      {profile?.trial_used_at
+                        ? (lang === 'pt' ? 'Trial encerrado — assine para continuar' : 'Trial ended — subscribe to continue')
+                        : (lang === 'pt' ? 'Você tem 30 min de teste grátis' : 'You have 30 min free trial')}
+                    </span>
+                  )}
                 </div>
-                <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden mt-2">
-                  <div
-                    className="h-full rounded-full bg-brand-500 transition-all duration-500"
-                    style={{
-                      width: `${Math.min(100, ((TRIAL_SECONDS_LIMIT - trialDisplayRemainingSeconds) / TRIAL_SECONDS_LIMIT) * 100)}%`,
-                    }}
-                  />
-                </div>
+                {isTrialActive && (
+                  <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden mt-2">
+                    <div
+                      className="h-full rounded-full bg-brand-500 transition-all duration-500"
+                      style={{
+                        width: `${Math.min(100, ((TRIAL_SECONDS_LIMIT - trialDisplayRemainingSeconds) / TRIAL_SECONDS_LIMIT) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           )}
