@@ -241,25 +241,30 @@ function App() {
     !profile?.trial_used_at &&
     (profile?.trial_seconds_used ?? 0) < TRIAL_SECONDS_LIMIT;
 
-  // Inicializar exibição do tempo restante assim que o perfil com trial carregar (evita mostrar 00:00)
-  useEffect(() => {
-    if (!profile?.trial_started_at || profile?.trial_used_at) return;
-    const used = profile.trial_seconds_used ?? 0;
-    if (used < TRIAL_SECONDS_LIMIT) {
-      setTrialDisplayRemainingSeconds(Math.max(0, TRIAL_SECONDS_LIMIT - used));
-    }
-  }, [profile?.trial_started_at, profile?.trial_seconds_used, profile?.trial_used_at, TRIAL_SECONDS_LIMIT]);
+  // Mostrar e atualizar o cronômetro sempre que o trial não tiver acabado (para a faixa da Home e do Planos)
+  const showTrialCountdown = accessStatus === 'allowed' && !!profile?.phone && !profile?.trial_used_at;
 
-  // Cronômetro que diminui a cada 1s; não depender de profile.trial_seconds_used para não recriar o interval e resetar o valor
+  // Inicializar tempo restante: se trial já começou no backend usa usado; senão 30:00
   useEffect(() => {
-    if (!isTrialActive) return;
-    const remaining = Math.max(0, TRIAL_SECONDS_LIMIT - (profile?.trial_seconds_used ?? 0));
+    if (!showTrialCountdown) return;
+    const used = profile?.trial_seconds_used ?? 0;
+    const remaining = profile?.trial_started_at
+      ? Math.max(0, TRIAL_SECONDS_LIMIT - used)
+      : TRIAL_SECONDS_LIMIT;
     setTrialDisplayRemainingSeconds(remaining);
+  }, [showTrialCountdown, profile?.trial_started_at, profile?.trial_seconds_used, TRIAL_SECONDS_LIMIT]);
+
+  // Cronômetro que diminui a cada 1s (só quando trial não acabou)
+  useEffect(() => {
+    if (!showTrialCountdown) return;
+    const remaining = Math.max(0, TRIAL_SECONDS_LIMIT - (profile?.trial_seconds_used ?? 0));
+    const initial = profile?.trial_started_at ? remaining : TRIAL_SECONDS_LIMIT;
+    setTrialDisplayRemainingSeconds(initial);
     const id = setInterval(() => {
       setTrialDisplayRemainingSeconds((prev) => Math.max(0, prev - 1));
     }, 1000);
     return () => clearInterval(id);
-  }, [isTrialActive, TRIAL_SECONDS_LIMIT]); // profile?.trial_seconds_used só na montagem; sync a cada 15s no callback do increment
+  }, [showTrialCountdown, TRIAL_SECONDS_LIMIT]);
 
   // Ao obter acesso (login), redirecionar para Home uma vez; não redirecionar de novo ao navegar
   useEffect(() => {
@@ -1943,7 +1948,7 @@ function App() {
             theme={theme}
             lang={lang}
             showTrialSection={accessStatus === 'allowed' && !!profile?.phone}
-            showTrialCountdown={isTrialActive}
+            showTrialCountdown={showTrialCountdown}
             trialDisplayRemainingSeconds={trialDisplayRemainingSeconds}
             trialMinutes={TRIAL_MINUTES}
             profileTrialUsedAt={profile?.trial_used_at ?? null}
@@ -1974,7 +1979,7 @@ function App() {
                   <span className="text-sm font-semibold text-brand-700 dark:text-brand-300">
                     {lang === 'pt' ? 'Teste grátis' : 'Free trial'}
                   </span>
-                  {isTrialActive ? (
+                  {!profile?.trial_used_at ? (
                     <>
                       <span className="text-lg font-bold text-brand-700 dark:text-brand-200 tabular-nums tracking-wider" aria-label={lang === 'pt' ? 'Tempo restante' : 'Time remaining'}>
                         {String(Math.floor(trialDisplayRemainingSeconds / 60)).padStart(2, '0')}
@@ -1982,18 +1987,16 @@ function App() {
                         {String(trialDisplayRemainingSeconds % 60).padStart(2, '0')}
                       </span>
                       <span className="text-xs text-brand-600 dark:text-brand-400 tabular-nums">
-                        {lang === 'pt' ? `de ${TRIAL_MINUTES} min` : `of ${TRIAL_MINUTES} min`}
+                        {lang === 'pt' ? `min restantes` : `min left`}
                       </span>
                     </>
                   ) : (
                     <span className="text-sm font-medium text-brand-700 dark:text-brand-300">
-                      {profile?.trial_used_at
-                        ? (lang === 'pt' ? 'Trial encerrado — assine para continuar' : 'Trial ended — subscribe to continue')
-                        : (lang === 'pt' ? 'Você tem 30 min de teste grátis' : 'You have 30 min free trial')}
+                      {lang === 'pt' ? 'Trial encerrado — assine para continuar' : 'Trial ended — subscribe to continue'}
                     </span>
                   )}
                 </div>
-                {isTrialActive && (
+                {!profile?.trial_used_at && (
                   <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden mt-2">
                     <div
                       className="h-full rounded-full bg-brand-500 transition-all duration-500"
