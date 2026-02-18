@@ -242,6 +242,16 @@ function App() {
     profile?.trial_started_at &&
     !profile?.trial_used_at &&
     (profile?.trial_seconds_used ?? 0) < TRIAL_SECONDS_LIMIT;
+
+  // Inicializar exibição do tempo restante assim que o perfil com trial carregar (evita mostrar 00:00)
+  useEffect(() => {
+    if (!profile?.trial_started_at || profile?.trial_used_at) return;
+    const used = profile.trial_seconds_used ?? 0;
+    if (used < TRIAL_SECONDS_LIMIT) {
+      setTrialDisplayRemainingSeconds(Math.max(0, TRIAL_SECONDS_LIMIT - used));
+    }
+  }, [profile?.trial_started_at, profile?.trial_seconds_used, profile?.trial_used_at, TRIAL_SECONDS_LIMIT]);
+
   useEffect(() => {
     if (!isTrialActive) return;
     const remaining = Math.max(0, TRIAL_SECONDS_LIMIT - (profile?.trial_seconds_used ?? 0));
@@ -1972,7 +1982,7 @@ function App() {
                     {lang === 'pt' ? `de ${TRIAL_MINUTES} min` : `of ${TRIAL_MINUTES} min`}
                   </span>
                 </div>
-                <div className="h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden mt-2">
+                <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden mt-2">
                   <div
                     className="h-full rounded-full bg-brand-500 transition-all duration-500"
                     style={{
