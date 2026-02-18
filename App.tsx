@@ -244,27 +244,24 @@ function App() {
   // Mostrar e atualizar o cronômetro sempre que o trial não tiver acabado (para a faixa da Home e do Planos)
   const showTrialCountdown = accessStatus === 'allowed' && !!profile?.phone && !profile?.trial_used_at;
 
-  // Inicializar tempo restante: se trial já começou no backend usa usado; senão 30:00
+  // Restaurar tempo restante do servidor ao carregar/atualizar (nunca resetar para 30:00 se já usou)
   useEffect(() => {
-    if (!showTrialCountdown) return;
-    const used = profile?.trial_seconds_used ?? 0;
-    const remaining = profile?.trial_started_at
+    if (!showTrialCountdown || !profile) return;
+    const used = profile.trial_seconds_used ?? 0;
+    const remaining = profile.trial_started_at
       ? Math.max(0, TRIAL_SECONDS_LIMIT - used)
       : TRIAL_SECONDS_LIMIT;
     setTrialDisplayRemainingSeconds(remaining);
   }, [showTrialCountdown, profile?.trial_started_at, profile?.trial_seconds_used, TRIAL_SECONDS_LIMIT]);
 
-  // Cronômetro que diminui a cada 1s (só quando trial não acabou)
+  // Só diminuir a cada 1s enquanto app aberto; não definir valor inicial aqui para não sobrescrever com 30:00 antes do perfil carregar
   useEffect(() => {
     if (!showTrialCountdown) return;
-    const remaining = Math.max(0, TRIAL_SECONDS_LIMIT - (profile?.trial_seconds_used ?? 0));
-    const initial = profile?.trial_started_at ? remaining : TRIAL_SECONDS_LIMIT;
-    setTrialDisplayRemainingSeconds(initial);
     const id = setInterval(() => {
       setTrialDisplayRemainingSeconds((prev) => Math.max(0, prev - 1));
     }, 1000);
     return () => clearInterval(id);
-  }, [showTrialCountdown, TRIAL_SECONDS_LIMIT]);
+  }, [showTrialCountdown]);
 
   // Ao obter acesso (login), redirecionar para Home uma vez; não redirecionar de novo ao navegar
   useEffect(() => {
