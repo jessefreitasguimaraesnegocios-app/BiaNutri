@@ -190,6 +190,14 @@ function App() {
         const p = await getProfile(userId);
         if (cancelled) return;
         setProfile(p);
+        // Restaurar tempo restante do servidor imediatamente (evita reset para 30:00 ao atualizar página)
+        if (p && p.phone && !p.trial_used_at) {
+          const used = Number(p.trial_seconds_used) || 0;
+          const remaining = p.trial_started_at
+            ? Math.max(0, TRIAL_SECONDS_LIMIT - used)
+            : TRIAL_SECONDS_LIMIT;
+          setTrialDisplayRemainingSeconds(remaining);
+        }
         const status = await getAccessStatus(userId, p);
         if (cancelled) return;
         setAccessStatus(status);
@@ -198,8 +206,14 @@ function App() {
           if (cancelled) return;
           if (start.ok) {
             const pUpdated = await getProfile(userId);
-            if (!cancelled && pUpdated) setProfile(pUpdated);
-            else if (!cancelled && p) setProfile({ ...p, trial_started_at: new Date().toISOString(), trial_seconds_used: 0, trial_used_at: null });
+            if (!cancelled && pUpdated) {
+              setProfile(pUpdated);
+              const used = Number(pUpdated.trial_seconds_used) || 0;
+              setTrialDisplayRemainingSeconds(pUpdated.trial_started_at ? Math.max(0, TRIAL_SECONDS_LIMIT - used) : TRIAL_SECONDS_LIMIT);
+            } else if (!cancelled && p) {
+              setProfile({ ...p, trial_started_at: new Date().toISOString(), trial_seconds_used: 0, trial_used_at: null });
+              setTrialDisplayRemainingSeconds(TRIAL_SECONDS_LIMIT);
+            }
           }
         }
       } catch (e) {
@@ -244,10 +258,10 @@ function App() {
   // Mostrar e atualizar o cronômetro sempre que o trial não tiver acabado (para a faixa da Home e do Planos)
   const showTrialCountdown = accessStatus === 'allowed' && !!profile?.phone && !profile?.trial_used_at;
 
-  // Restaurar tempo restante do servidor ao carregar/atualizar (nunca resetar para 30:00 se já usou)
+  // Sincronizar tempo restante quando o perfil mudar (ex.: após increment a cada 15s); valor inicial já foi setado no carregamento do perfil
   useEffect(() => {
     if (!showTrialCountdown || !profile) return;
-    const used = profile.trial_seconds_used ?? 0;
+    const used = Number(profile.trial_seconds_used) || 0;
     const remaining = profile.trial_started_at
       ? Math.max(0, TRIAL_SECONDS_LIMIT - used)
       : TRIAL_SECONDS_LIMIT;
