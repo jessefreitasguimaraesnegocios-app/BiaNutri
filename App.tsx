@@ -185,11 +185,15 @@ function App() {
     (async () => {
       setIsCheckingAccess(true);
       try {
+        let cachedRemaining: number | null = null;
         try {
           const cached = sessionStorage.getItem(TRIAL_REMAINING_KEY(userId));
           if (cached) {
             const val = parseInt(cached, 10);
-            if (!isNaN(val) && val >= 0 && val <= TRIAL_SECONDS_LIMIT) setTrialDisplayRemainingSeconds(val);
+            if (!isNaN(val) && val >= 0 && val <= TRIAL_SECONDS_LIMIT) {
+              cachedRemaining = val;
+              setTrialDisplayRemainingSeconds(val);
+            }
           }
         } catch (_) {}
         if (didReturnFromPayment) {
@@ -214,7 +218,8 @@ function App() {
         const status = await getAccessStatus(userId, p);
         if (cancelled) return;
         setAccessStatus(status);
-        if (status === 'allowed' && p && !p.trial_started_at && !p.trial_used_at && p.phone) {
+        const cacheSaysTrialInProgress = cachedRemaining != null && cachedRemaining < TRIAL_SECONDS_LIMIT && cachedRemaining >= 0;
+        if (status === 'allowed' && p && !p.trial_started_at && !p.trial_used_at && p.phone && !cacheSaysTrialInProgress) {
           const start = await startTrial(userId);
           if (cancelled) return;
           if (start.ok) {
@@ -276,15 +281,20 @@ function App() {
   // Mostrar e atualizar o cronômetro sempre que o trial não tiver acabado (para a faixa da Home e do Planos)
   const showTrialCountdown = accessStatus === 'allowed' && !!profile?.phone && !profile?.trial_used_at;
 
-  // Sincronizar tempo restante quando o perfil mudar; se já estourou, travar na paywall
+  // Sincronizar tempo restante quando o perfil mudar; se já estourou, travar na paywall. Quando o servidor devolve trial_started_at null mas o display já está em "trial em andamento" (cache), não sobrescrever com 30 min.
   useEffect(() => {
     if (!showTrialCountdown || !profile) return;
     const used = Number(profile.trial_seconds_used) || 0;
-    const remaining = profile.trial_started_at
+    const fromServer = profile.trial_started_at
       ? Math.max(0, TRIAL_SECONDS_LIMIT - used)
       : TRIAL_SECONDS_LIMIT;
-    setTrialDisplayRemainingSeconds(remaining);
-    if (profile.trial_started_at && remaining <= 0) setAccessStatus('paywall');
+    setTrialDisplayRemainingSeconds((prev) => {
+      const remaining = profile.trial_started_at
+        ? fromServer
+        : (prev > 0 && prev < TRIAL_SECONDS_LIMIT ? prev : TRIAL_SECONDS_LIMIT);
+      return remaining;
+    });
+    if (profile.trial_started_at && fromServer <= 0) setAccessStatus('paywall');
   }, [showTrialCountdown, profile?.trial_started_at, profile?.trial_seconds_used, TRIAL_SECONDS_LIMIT]);
 
   // Só diminuir a cada 1s; quando chegar a 0, travar na paywall imediatamente
