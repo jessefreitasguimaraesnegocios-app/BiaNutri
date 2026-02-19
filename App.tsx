@@ -163,6 +163,8 @@ function App() {
   // Carregar e salvar dados por usuário (cada conta mantém seus próprios dados)
   const userId = session?.user?.id ?? null;
 
+  const TRIAL_REMAINING_KEY = (uid: string) => `biaNutri_trialRemaining_${uid}`;
+
   // Verificar acesso (perfil, trial, assinatura) e limpar ?payment=success
   useEffect(() => {
     if (!userId) {
@@ -183,6 +185,13 @@ function App() {
     (async () => {
       setIsCheckingAccess(true);
       try {
+        try {
+          const cached = sessionStorage.getItem(TRIAL_REMAINING_KEY(userId));
+          if (cached) {
+            const val = parseInt(cached, 10);
+            if (!isNaN(val) && val >= 0 && val <= TRIAL_SECONDS_LIMIT) setTrialDisplayRemainingSeconds(val);
+          }
+        } catch (_) {}
         if (didReturnFromPayment) {
           await syncSubscriptionFromMP(userId);
           if (cancelled) return;
@@ -190,13 +199,17 @@ function App() {
         const p = await getProfile(userId);
         if (cancelled) return;
         setProfile(p);
-        // Restaurar tempo restante do servidor imediatamente (evita reset para 30:00 ao atualizar página)
         if (p && p.phone && !p.trial_used_at) {
           const used = Number(p.trial_seconds_used) || 0;
-          const remaining = p.trial_started_at
+          const serverRemaining = p.trial_started_at
             ? Math.max(0, TRIAL_SECONDS_LIMIT - used)
             : TRIAL_SECONDS_LIMIT;
-          setTrialDisplayRemainingSeconds(remaining);
+          setTrialDisplayRemainingSeconds((prev) => {
+            const next = prev === 0 ? serverRemaining : Math.min(prev, serverRemaining);
+            try { sessionStorage.setItem(TRIAL_REMAINING_KEY(userId), String(next)); } catch (_) {}
+            return next;
+          });
+          if (p.trial_started_at && serverRemaining <= 0) setAccessStatus('paywall');
         }
         const status = await getAccessStatus(userId, p);
         if (cancelled) return;
@@ -209,10 +222,13 @@ function App() {
             if (!cancelled && pUpdated) {
               setProfile(pUpdated);
               const used = Number(pUpdated.trial_seconds_used) || 0;
-              setTrialDisplayRemainingSeconds(pUpdated.trial_started_at ? Math.max(0, TRIAL_SECONDS_LIMIT - used) : TRIAL_SECONDS_LIMIT);
+              const rem = pUpdated.trial_started_at ? Math.max(0, TRIAL_SECONDS_LIMIT - used) : TRIAL_SECONDS_LIMIT;
+              setTrialDisplayRemainingSeconds(rem);
+              try { sessionStorage.setItem(TRIAL_REMAINING_KEY(userId), String(rem)); } catch (_) {}
             } else if (!cancelled && p) {
               setProfile({ ...p, trial_started_at: new Date().toISOString(), trial_seconds_used: 0, trial_used_at: null });
               setTrialDisplayRemainingSeconds(TRIAL_SECONDS_LIMIT);
+              try { sessionStorage.setItem(TRIAL_REMAINING_KEY(userId), String(TRIAL_SECONDS_LIMIT)); } catch (_) {}
             }
           }
         }
@@ -237,7 +253,9 @@ function App() {
         trial_seconds_used: res.trial_seconds_used,
         trial_used_at: res.trial_used_at ?? prev.trial_used_at,
       } : null);
-      setTrialDisplayRemainingSeconds(Math.max(0, TRIAL_SECONDS_LIMIT - res.trial_seconds_used));
+      const rem = Math.max(0, TRIAL_SECONDS_LIMIT - res.trial_seconds_used);
+      setTrialDisplayRemainingSeconds(rem);
+      try { sessionStorage.setItem(TRIAL_REMAINING_KEY(userId), String(rem)); } catch (_) {}
       if (res.exhausted) setAccessStatus('paywall');
     };
     const id = setInterval(tick, 15000);
@@ -258,7 +276,7 @@ function App() {
   // Mostrar e atualizar o cronômetro sempre que o trial não tiver acabado (para a faixa da Home e do Planos)
   const showTrialCountdown = accessStatus === 'allowed' && !!profile?.phone && !profile?.trial_used_at;
 
-  // Sincronizar tempo restante quando o perfil mudar (ex.: após increment a cada 15s); valor inicial já foi setado no carregamento do perfil
+  // Sincronizar tempo restante quando o perfil mudar; se já estourou, travar na paywall
   useEffect(() => {
     if (!showTrialCountdown || !profile) return;
     const used = Number(profile.trial_seconds_used) || 0;
@@ -266,13 +284,18 @@ function App() {
       ? Math.max(0, TRIAL_SECONDS_LIMIT - used)
       : TRIAL_SECONDS_LIMIT;
     setTrialDisplayRemainingSeconds(remaining);
+    if (profile.trial_started_at && remaining <= 0) setAccessStatus('paywall');
   }, [showTrialCountdown, profile?.trial_started_at, profile?.trial_seconds_used, TRIAL_SECONDS_LIMIT]);
 
-  // Só diminuir a cada 1s enquanto app aberto; não definir valor inicial aqui para não sobrescrever com 30:00 antes do perfil carregar
+  // Só diminuir a cada 1s; quando chegar a 0, travar na paywall imediatamente
   useEffect(() => {
     if (!showTrialCountdown) return;
     const id = setInterval(() => {
-      setTrialDisplayRemainingSeconds((prev) => Math.max(0, prev - 1));
+      setTrialDisplayRemainingSeconds((prev) => {
+        const next = Math.max(0, prev - 1);
+        if (next <= 0) setAccessStatus('paywall');
+        return next;
+      });
     }, 1000);
     return () => clearInterval(id);
   }, [showTrialCountdown]);
