@@ -128,53 +128,49 @@ async function invokeWithAuth<T = unknown>(
   }
 }
 
-/** Inicia o trial (backend valida telefone e se já foi usado). */
-export async function startTrial(userId: string): Promise<{
-  ok: boolean;
+/**
+ * Retorna status do trial no servidor (time-based: remaining = LIMIT - (now - trial_started_at)).
+ * Não usa localStorage. Exemplo:
+ *   const { remaining_seconds, is_trial_active } = await getTrialStatus(userId);
+ *   setDisplaySeconds(remaining_seconds);
+ *   if (!is_trial_active) setAccessStatus('paywall');
+ */
+export async function getTrialStatus(userId: string): Promise<{
+  remaining_seconds: number;
+  is_trial_active: boolean;
   error?: string;
-  trial_seconds_used?: number;
-  trial_used_at?: string | null;
 }> {
-  const { data: body, error } = await invokeWithAuth<{ trial_seconds_used?: number; trial_used_at?: string | null; error?: string }>(
-    TRIAL_FUNCTION,
-    { action: 'start', user_id: userId }
-  );
-  if (error) return { ok: false, error };
-  if (body?.error) return { ok: false, error: body.error };
+  const { data: body, error } = await invokeWithAuth<{
+    remaining_seconds?: number;
+    is_trial_active?: boolean;
+    error?: string;
+  }>(TRIAL_FUNCTION, { action: 'status', user_id: userId });
+  if (error) return { remaining_seconds: 0, is_trial_active: false, error };
   return {
-    ok: true,
-    trial_seconds_used: body?.trial_seconds_used ?? 0,
-    trial_used_at: body?.trial_used_at ?? null,
+    remaining_seconds: Math.max(0, body?.remaining_seconds ?? 0),
+    is_trial_active: !!body?.is_trial_active,
+    error: body?.error,
   };
 }
 
-/** Incrementa tempo de uso do trial (chamar a cada ~15s enquanto app em uso). */
-export async function incrementTrialTime(
-  userId: string,
-  seconds: number
-): Promise<{
+/** Inicia o trial na primeira vez (backend seta trial_started_at = NOW()). Retorna status atual. */
+export async function startTrial(userId: string): Promise<{
   ok: boolean;
-  trial_seconds_used: number;
-  trial_used_at: string | null;
-  exhausted: boolean;
+  error?: string;
+  remaining_seconds?: number;
+  is_trial_active?: boolean;
 }> {
-  const { data: body, error } = await invokeWithAuth<{ trial_seconds_used?: number; trial_used_at?: string | null }>(
-    TRIAL_FUNCTION,
-    { action: 'increment', user_id: userId, seconds }
-  );
-  if (error || !body) {
-    return {
-      ok: false,
-      trial_seconds_used: 0,
-      trial_used_at: null,
-      exhausted: false,
-    };
-  }
+  const { data: body, error } = await invokeWithAuth<{
+    remaining_seconds?: number;
+    is_trial_active?: boolean;
+    error?: string;
+  }>(TRIAL_FUNCTION, { action: 'start', user_id: userId });
+  if (error) return { ok: false, error };
   return {
-    ok: true,
-    trial_seconds_used: body?.trial_seconds_used ?? 0,
-    trial_used_at: body?.trial_used_at ?? null,
-    exhausted: !!body?.trial_used_at,
+    ok: !body?.error,
+    error: body?.error,
+    remaining_seconds: body?.remaining_seconds ?? 0,
+    is_trial_active: body?.is_trial_active ?? false,
   };
 }
 
@@ -190,30 +186,37 @@ export async function getSubscriptionActive(userId: string): Promise<boolean> {
   return sub.status === 'active' && new Date(sub.valid_until) > new Date();
 }
 
-/** Define se o usuário tem acesso ao app (não precisa ver paywall). */
+/** Resultado de getAccessStatus quando inclui dados do trial (para exibir cronômetro). */
+export type AccessStatusResult = {
+  status: AccessStatus;
+  remaining_seconds?: number;
+  is_trial_active?: boolean;
+};
+
+/** Define se o usuário tem acesso (fonte: servidor). Retorna status + remaining_seconds para o cronômetro. */
 export async function getAccessStatus(
   userId: string,
   profile: {
     phone: string | null;
     trial_started_at: string | null;
-    trial_seconds_used: number;
+    trial_seconds_used?: number;
     trial_used_at: string | null;
   } | null
-): Promise<AccessStatus> {
+): Promise<AccessStatusResult> {
   const hasSubscription = await getSubscriptionActive(userId);
-  if (hasSubscription) return 'allowed';
+  if (hasSubscription) return { status: 'allowed' };
 
-  if (!profile) return 'phone_required';
-  if (!profile.phone) return 'phone_required';
-  if (profile.trial_used_at) return 'paywall';
-  if (
-    profile.trial_started_at != null &&
-    profile.trial_seconds_used < TRIAL_SECONDS_LIMIT
-  ) {
-    return 'allowed';
-  }
-  if (profile.trial_started_at != null) return 'paywall';
-  return 'allowed';
+  if (!profile) return { status: 'phone_required' };
+  if (!profile.phone) return { status: 'phone_required' };
+
+  const trial = await getTrialStatus(userId);
+  if (trial.error && trial.remaining_seconds <= 0) return { status: 'paywall' };
+  const status: AccessStatus = trial.is_trial_active ? 'allowed' : 'paywall';
+  return {
+    status,
+    remaining_seconds: trial.remaining_seconds,
+    is_trial_active: trial.is_trial_active,
+  };
 }
 
 /** URL de retorno após pagamento no Mercado Pago (assinatura). */

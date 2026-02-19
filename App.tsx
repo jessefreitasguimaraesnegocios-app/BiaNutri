@@ -29,7 +29,7 @@ import {
   getAccessStatus,
   getSubscriptionActive,
   startTrial,
-  incrementTrialTime,
+  getTrialStatus,
   syncSubscriptionFromMP,
 } from './services/subscriptionService';
 import type { AccessStatus } from './types';
@@ -93,7 +93,6 @@ function App() {
   const [accessStatus, setAccessStatus] = useState<AccessStatus | null>(null);
   const [isCheckingAccess, setIsCheckingAccess] = useState(true);
   const [paymentReturn, setPaymentReturn] = useState<'success' | 'failure' | null>(null);
-  const trialIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
   /** Só redirecionar para Home uma vez ao obter acesso; não redirecionar de novo ao navegar. */
   const hasScrolledToHomeRef = useRef(false);
@@ -163,9 +162,7 @@ function App() {
   // Carregar e salvar dados por usuário (cada conta mantém seus próprios dados)
   const userId = session?.user?.id ?? null;
 
-  const TRIAL_REMAINING_KEY = (uid: string) => `biaNutri_trialRemaining_${uid}`;
-
-  // Verificar acesso (perfil, trial, assinatura) e limpar ?payment=success
+  // Verificar acesso (perfil, trial no servidor, assinatura) – sem localStorage
   useEffect(() => {
     if (!userId) {
       setProfile(null);
@@ -185,17 +182,6 @@ function App() {
     (async () => {
       setIsCheckingAccess(true);
       try {
-        let cachedRemaining: number | null = null;
-        try {
-          const cached = sessionStorage.getItem(TRIAL_REMAINING_KEY(userId));
-          if (cached) {
-            const val = parseInt(cached, 10);
-            if (!isNaN(val) && val >= 0 && val <= TRIAL_SECONDS_LIMIT) {
-              cachedRemaining = val;
-              setTrialDisplayRemainingSeconds(val);
-            }
-          }
-        } catch (_) {}
         if (didReturnFromPayment) {
           await syncSubscriptionFromMP(userId);
           if (cancelled) return;
@@ -203,38 +189,20 @@ function App() {
         const p = await getProfile(userId);
         if (cancelled) return;
         setProfile(p);
-        if (p && p.phone && !p.trial_used_at) {
-          const used = Number(p.trial_seconds_used) || 0;
-          const serverRemaining = p.trial_started_at
-            ? Math.max(0, TRIAL_SECONDS_LIMIT - used)
-            : TRIAL_SECONDS_LIMIT;
-          setTrialDisplayRemainingSeconds((prev) => {
-            const next = prev === 0 ? serverRemaining : Math.min(prev, serverRemaining);
-            try { sessionStorage.setItem(TRIAL_REMAINING_KEY(userId), String(next)); } catch (_) {}
-            return next;
-          });
-          if (p.trial_started_at && serverRemaining <= 0) setAccessStatus('paywall');
-        }
-        const status = await getAccessStatus(userId, p);
+        const result = await getAccessStatus(userId, p);
         if (cancelled) return;
-        setAccessStatus(status);
-        const cacheSaysTrialInProgress = cachedRemaining != null && cachedRemaining < TRIAL_SECONDS_LIMIT && cachedRemaining >= 0;
-        if (status === 'allowed' && p && !p.trial_started_at && !p.trial_used_at && p.phone && !cacheSaysTrialInProgress) {
+        setAccessStatus(result.status);
+        if (result.remaining_seconds != null) {
+          setTrialDisplayRemainingSeconds(Math.max(0, result.remaining_seconds));
+        }
+        if (p && p.phone && !p.trial_started_at && !p.trial_used_at) {
           const start = await startTrial(userId);
           if (cancelled) return;
           if (start.ok) {
+            setAccessStatus('allowed');
+            if (start.remaining_seconds != null) setTrialDisplayRemainingSeconds(Math.max(0, start.remaining_seconds));
             const pUpdated = await getProfile(userId);
-            if (!cancelled && pUpdated) {
-              setProfile(pUpdated);
-              const used = Number(pUpdated.trial_seconds_used) || 0;
-              const rem = pUpdated.trial_started_at ? Math.max(0, TRIAL_SECONDS_LIMIT - used) : TRIAL_SECONDS_LIMIT;
-              setTrialDisplayRemainingSeconds(rem);
-              try { sessionStorage.setItem(TRIAL_REMAINING_KEY(userId), String(rem)); } catch (_) {}
-            } else if (!cancelled && p) {
-              setProfile({ ...p, trial_started_at: new Date().toISOString(), trial_seconds_used: 0, trial_used_at: null });
-              setTrialDisplayRemainingSeconds(TRIAL_SECONDS_LIMIT);
-              try { sessionStorage.setItem(TRIAL_REMAINING_KEY(userId), String(TRIAL_SECONDS_LIMIT)); } catch (_) {}
-            }
+            if (!cancelled && pUpdated) setProfile(pUpdated);
           }
         }
       } catch (e) {
@@ -247,57 +215,21 @@ function App() {
     return () => { cancelled = true; };
   }, [userId]);
 
-  // Contador de trial: a cada 15s incrementa tempo de uso enquanto app está em foco (só após trial iniciado no backend)
+  const showTrialCountdown = accessStatus === 'allowed' && !!profile?.phone;
+
+  // Sincronizar tempo com servidor a cada 60s (trial é time-based, não reseta no refresh)
   useEffect(() => {
-    if (!userId || accessStatus !== 'allowed' || !profile) return;
-    if (!profile.trial_started_at || profile.trial_used_at || (profile.trial_seconds_used >= TRIAL_SECONDS_LIMIT)) return;
-    const tick = async () => {
-      const res = await incrementTrialTime(userId, 15);
-      setProfile(prev => prev ? {
-        ...prev,
-        trial_seconds_used: res.trial_seconds_used,
-        trial_used_at: res.trial_used_at ?? prev.trial_used_at,
-      } : null);
-      const rem = Math.max(0, TRIAL_SECONDS_LIMIT - res.trial_seconds_used);
-      setTrialDisplayRemainingSeconds(rem);
-      try { sessionStorage.setItem(TRIAL_REMAINING_KEY(userId), String(rem)); } catch (_) {}
-      if (res.exhausted) setAccessStatus('paywall');
+    if (!userId || !showTrialCountdown) return;
+    const sync = async () => {
+      const trial = await getTrialStatus(userId);
+      if (trial.remaining_seconds != null) setTrialDisplayRemainingSeconds(Math.max(0, trial.remaining_seconds));
+      if (!trial.is_trial_active) setAccessStatus('paywall');
     };
-    const id = setInterval(tick, 15000);
-    trialIntervalRef.current = id;
-    return () => {
-      if (trialIntervalRef.current) clearInterval(trialIntervalRef.current);
-      trialIntervalRef.current = null;
-    };
-  }, [userId, accessStatus, profile?.trial_started_at, profile?.trial_seconds_used, profile?.trial_used_at]);
+    const id = setInterval(sync, 60000);
+    return () => clearInterval(id);
+  }, [userId, showTrialCountdown]);
 
-  // Cronômetro do trial: atualiza a cada 1s e sincroniza com o servidor quando profile.trial_seconds_used muda
-  const isTrialActive =
-    accessStatus === 'allowed' &&
-    profile?.trial_started_at &&
-    !profile?.trial_used_at &&
-    (profile?.trial_seconds_used ?? 0) < TRIAL_SECONDS_LIMIT;
-
-  // Mostrar e atualizar o cronômetro sempre que o trial não tiver acabado (para a faixa da Home e do Planos)
-  const showTrialCountdown = accessStatus === 'allowed' && !!profile?.phone && !profile?.trial_used_at;
-
-  // Sincronizar tempo restante quando o perfil mudar; se já estourou, travar na paywall. Quando o servidor devolve trial_started_at null mas o display já está em "trial em andamento" (cache), não sobrescrever com 30 min.
-  useEffect(() => {
-    if (!showTrialCountdown || !profile) return;
-    const used = Number(profile.trial_seconds_used) || 0;
-    const fromServer = profile.trial_started_at
-      ? Math.max(0, TRIAL_SECONDS_LIMIT - used)
-      : TRIAL_SECONDS_LIMIT;
-    setTrialDisplayRemainingSeconds((prev) => {
-      const remaining = profile.trial_started_at
-        ? fromServer
-        : (prev > 0 && prev < TRIAL_SECONDS_LIMIT ? prev : TRIAL_SECONDS_LIMIT);
-      return remaining;
-    });
-    if (profile.trial_started_at && fromServer <= 0) setAccessStatus('paywall');
-  }, [showTrialCountdown, profile?.trial_started_at, profile?.trial_seconds_used, TRIAL_SECONDS_LIMIT]);
-
-  // Só diminuir a cada 1s; quando chegar a 0, travar na paywall imediatamente
+  // Cronômetro local a cada 1s; ao chegar a 0, travar na paywall
   useEffect(() => {
     if (!showTrialCountdown) return;
     const id = setInterval(() => {
@@ -1861,17 +1793,15 @@ function App() {
           onSuccess={async () => {
             const p = await getProfile(userId!);
             setProfile(p);
-            const status = await getAccessStatus(userId!, p);
-            setAccessStatus(status);
-            if (status === 'allowed' && p?.phone) {
+            const result = await getAccessStatus(userId!, p);
+            setAccessStatus(result.status);
+            if (result.remaining_seconds != null) setTrialDisplayRemainingSeconds(Math.max(0, result.remaining_seconds));
+            if (result.status === 'allowed' && p?.phone) {
               const start = await startTrial(userId!);
-              if (start.ok) {
-                setProfile(prev => prev ? {
-                  ...prev,
-                  trial_started_at: new Date().toISOString(),
-                  trial_seconds_used: 0,
-                  trial_used_at: null,
-                } : null);
+              if (start.ok && start.remaining_seconds != null) {
+                setTrialDisplayRemainingSeconds(Math.max(0, start.remaining_seconds));
+                const pUpdated = await getProfile(userId!);
+                if (pUpdated) setProfile(pUpdated);
               }
             }
           }}
@@ -1916,8 +1846,9 @@ function App() {
             await syncSubscriptionFromMP(userId);
             const p = await getProfile(userId);
             setProfile(p);
-            const status = await getAccessStatus(userId, p);
-            setAccessStatus(status);
+            const result = await getAccessStatus(userId, p);
+            setAccessStatus(result.status);
+            if (result.remaining_seconds != null) setTrialDisplayRemainingSeconds(Math.max(0, result.remaining_seconds));
             setPaymentReturn(null);
           } catch (e) {
             console.error('Erro ao verificar assinatura:', e);
@@ -2001,8 +1932,9 @@ function App() {
                 await syncSubscriptionFromMP(userId!);
                 const p = await getProfile(userId!);
                 setProfile(p);
-                const status = await getAccessStatus(userId!, p);
-                setAccessStatus(status);
+                const result = await getAccessStatus(userId!, p);
+                setAccessStatus(result.status);
+                if (result.remaining_seconds != null) setTrialDisplayRemainingSeconds(Math.max(0, result.remaining_seconds));
                 setPaymentReturn(null);
               } catch (e) {
                 console.error('Erro ao verificar assinatura:', e);
