@@ -1,5 +1,6 @@
 // Edge Function: trial – time-based free trial (no reset on refresh/login/device).
 // Remaining = TRIAL_SECONDS_LIMIT - (now - trial_started_at). Set TRIAL_MINUTES in Supabase Secrets.
+// Uses authenticated user from JWT only; body is optional. Auto-initializes trial when possible.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -62,10 +63,10 @@ serve(async (req) => {
       });
     }
 
-    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: `Bearer ${token}` } },
     });
-    const { data: { user }, error: userError } = await authClient.auth.getUser(token);
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     if (userError || !user) {
       return new Response(
         JSON.stringify({ error: "Invalid or expired token" }),
@@ -76,100 +77,73 @@ serve(async (req) => {
       );
     }
 
-    const admin = createClient(supabaseUrl, supabaseServiceKey);
-    const body = (await req.json().catch(() => ({}))) as { action?: string; user_id?: string };
-    const userId = body?.user_id ?? user.id;
-    if (userId !== user.id) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const userId = user.id;
+
+    let body: Record<string, unknown> = {};
+    try {
+      const text = await req.text();
+      if (text && String(text).trim()) {
+        body = JSON.parse(text) as Record<string, unknown>;
+      }
+    } catch (_) {
+      // empty or invalid body: continue with default behavior
     }
 
-    const action = body?.action ?? "status";
+    const admin = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { data: profile, error: fetchError } = await admin
-      .from("profiles")
-      .select("phone, trial_started_at, trial_used_at")
-      .eq("id", userId)
-      .single();
+    // Suporta profiles com id = auth user id OU user_id = auth user id
+    let profile: { phone?: string | null; trial_started_at: string | null; trial_used_at: string | null } | null = null;
+    let profileKey: "id" | "user_id" = "id";
 
-    if (fetchError || !profile) {
+    const byId = await admin.from("profiles").select("phone, trial_started_at, trial_used_at").eq("id", userId).maybeSingle();
+    if (byId.data) {
+      profile = byId.data;
+      profileKey = "id";
+    } else {
+      try {
+        const byUserId = await admin.from("profiles").select("phone, trial_started_at, trial_used_at").eq("user_id", userId).maybeSingle();
+        if (byUserId.data) {
+          profile = byUserId.data;
+          profileKey = "user_id";
+        }
+      } catch (_) {
+        // tabela pode não ter coluna user_id
+      }
+    }
+
+    if (!profile) {
       return new Response(JSON.stringify({ error: "Profile not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (action === "start") {
-      if (profile.trial_used_at) {
-        return new Response(
-          JSON.stringify({
-            remaining_seconds: 0,
-            is_trial_active: false,
-            error: "trial_already_used",
-          }),
-          {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
-      const phone = profile.phone as string | null;
-      if (!phone || String(phone).trim() === "") {
-        return new Response(
-          JSON.stringify({
-            remaining_seconds: TRIAL_SECONDS_LIMIT,
-            is_trial_active: false,
-            error: "phone_required",
-          }),
-          {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
-      const { data: other } = await admin
-        .from("profiles")
-        .select("id")
-        .eq("phone", String(phone).trim())
-        .not("trial_used_at", "is", null)
-        .neq("id", userId)
-        .limit(1);
-      if (other && other.length > 0) {
-        return new Response(
-          JSON.stringify({
-            remaining_seconds: 0,
-            is_trial_active: false,
-            error: "phone_already_used",
-          }),
-          {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
+    const eqUserId = profileKey === "id" ? { id: userId } : { user_id: userId };
 
-      if (!profile.trial_started_at) {
-        const now = new Date().toISOString();
-        const { error: updateError } = await admin
-          .from("profiles")
-          .update({
-            trial_started_at: now,
-            updated_at: now,
-          })
-          .eq("id", userId);
-        if (updateError) {
-          return new Response(JSON.stringify({ error: updateError.message }), {
-            status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+    if (profile.trial_used_at) {
+      return new Response(
+        JSON.stringify({
+          remaining_seconds: 0,
+          is_trial_active: false,
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
+      );
+    }
+
+    if (!profile.trial_started_at) {
+      const now = new Date().toISOString();
+      const { error: updateError } = await admin
+        .from("profiles")
+        .update({ trial_started_at: now, updated_at: now })
+        .match(eqUserId);
+      if (!updateError) {
         return new Response(
           JSON.stringify({
             remaining_seconds: TRIAL_SECONDS_LIMIT,
             is_trial_active: true,
-            trial_started_at: now,
           }),
           {
             status: 200,
@@ -177,16 +151,26 @@ serve(async (req) => {
           }
         );
       }
+      return new Response(
+        JSON.stringify({
+          remaining_seconds: TRIAL_SECONDS_LIMIT,
+          is_trial_active: false,
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     let result = computeRemaining(profile);
 
-    if (result.remaining_seconds <= 0 && profile.trial_started_at && !profile.trial_used_at) {
+    if (result.remaining_seconds <= 0) {
       const now = new Date().toISOString();
       await admin
         .from("profiles")
         .update({ trial_used_at: now, updated_at: now })
-        .eq("id", userId);
+        .match(eqUserId);
       result = { remaining_seconds: 0, is_trial_active: false };
     }
 

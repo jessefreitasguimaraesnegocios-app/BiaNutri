@@ -191,6 +191,7 @@ export type AccessStatusResult = {
   status: AccessStatus;
   remaining_seconds?: number;
   is_trial_active?: boolean;
+  hasSubscription?: boolean;
 };
 
 /** Define se o usuário tem acesso (fonte: servidor). Retorna status + remaining_seconds para o cronômetro. */
@@ -204,7 +205,7 @@ export async function getAccessStatus(
   } | null
 ): Promise<AccessStatusResult> {
   const hasSubscription = await getSubscriptionActive(userId);
-  if (hasSubscription) return { status: 'allowed' };
+  if (hasSubscription) return { status: 'allowed', hasSubscription: true };
 
   if (!profile) return { status: 'phone_required' };
   if (!profile.phone) return { status: 'phone_required' };

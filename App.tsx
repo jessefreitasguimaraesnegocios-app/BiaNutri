@@ -91,6 +91,7 @@ function App() {
     trial_used_at: string | null;
   } | null>(null);
   const [accessStatus, setAccessStatus] = useState<AccessStatus | null>(null);
+  const [hasSubscription, setHasSubscription] = useState(false);
   const [isCheckingAccess, setIsCheckingAccess] = useState(true);
   const [paymentReturn, setPaymentReturn] = useState<'success' | 'failure' | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -167,6 +168,7 @@ function App() {
     if (!userId) {
       setProfile(null);
       setAccessStatus(null);
+      setHasSubscription(false);
       setIsCheckingAccess(false);
       return;
     }
@@ -189,12 +191,6 @@ function App() {
         const p = await getProfile(userId);
         if (cancelled) return;
         setProfile(p);
-        const result = await getAccessStatus(userId, p);
-        if (cancelled) return;
-        setAccessStatus(result.status);
-        if (result.remaining_seconds != null) {
-          setTrialDisplayRemainingSeconds(Math.max(0, result.remaining_seconds));
-        }
         if (p && p.phone && !p.trial_started_at && !p.trial_used_at) {
           const start = await startTrial(userId);
           if (cancelled) return;
@@ -203,6 +199,21 @@ function App() {
             if (start.remaining_seconds != null) setTrialDisplayRemainingSeconds(Math.max(0, start.remaining_seconds));
             const pUpdated = await getProfile(userId);
             if (!cancelled && pUpdated) setProfile(pUpdated);
+          } else {
+            const result = await getAccessStatus(userId, p);
+            if (!cancelled) {
+              setAccessStatus(result.status);
+              setHasSubscription(!!result.hasSubscription);
+              if (result.remaining_seconds != null) setTrialDisplayRemainingSeconds(Math.max(0, result.remaining_seconds));
+            }
+          }
+        } else {
+          const result = await getAccessStatus(userId, p);
+          if (cancelled) return;
+          setAccessStatus(result.status);
+          setHasSubscription(!!result.hasSubscription);
+          if (result.remaining_seconds != null) {
+            setTrialDisplayRemainingSeconds(Math.max(0, result.remaining_seconds));
           }
         }
       } catch (e) {
@@ -215,12 +226,14 @@ function App() {
     return () => { cancelled = true; };
   }, [userId]);
 
-  const showTrialCountdown = accessStatus === 'allowed' && !!profile?.phone;
+  const showTrialCountdown = accessStatus === 'allowed' && !!profile?.phone && !hasSubscription;
 
-  // Sincronizar tempo com servidor a cada 60s (trial é time-based, não reseta no refresh)
+  // Sincronizar tempo com servidor a cada 60s (trial é time-based). Não colocar paywall se usuário tem assinatura ativa.
   useEffect(() => {
     if (!userId || !showTrialCountdown) return;
     const sync = async () => {
+      const hasSubscription = await getSubscriptionActive(userId);
+      if (hasSubscription) return;
       const trial = await getTrialStatus(userId);
       if (trial.remaining_seconds != null) setTrialDisplayRemainingSeconds(Math.max(0, trial.remaining_seconds));
       if (!trial.is_trial_active) setAccessStatus('paywall');
@@ -229,18 +242,22 @@ function App() {
     return () => clearInterval(id);
   }, [userId, showTrialCountdown]);
 
-  // Cronômetro local a cada 1s; ao chegar a 0, travar na paywall
+  // Cronômetro local a cada 1s; ao chegar a 0, travar na paywall só se não tiver assinatura ativa
   useEffect(() => {
-    if (!showTrialCountdown) return;
+    if (!userId || !showTrialCountdown) return;
     const id = setInterval(() => {
       setTrialDisplayRemainingSeconds((prev) => {
         const next = Math.max(0, prev - 1);
-        if (next <= 0) setAccessStatus('paywall');
+        if (next <= 0) {
+          getSubscriptionActive(userId).then((active) => {
+            if (!active) setAccessStatus('paywall');
+          });
+        }
         return next;
       });
     }, 1000);
     return () => clearInterval(id);
-  }, [showTrialCountdown]);
+  }, [userId, showTrialCountdown]);
 
   // Ao obter acesso (login), redirecionar para Home uma vez; não redirecionar de novo ao navegar
   useEffect(() => {
@@ -1795,6 +1812,7 @@ function App() {
             setProfile(p);
             const result = await getAccessStatus(userId!, p);
             setAccessStatus(result.status);
+            setHasSubscription(!!result.hasSubscription);
             if (result.remaining_seconds != null) setTrialDisplayRemainingSeconds(Math.max(0, result.remaining_seconds));
             if (result.status === 'allowed' && p?.phone) {
               const start = await startTrial(userId!);
@@ -1848,6 +1866,7 @@ function App() {
             setProfile(p);
             const result = await getAccessStatus(userId, p);
             setAccessStatus(result.status);
+            setHasSubscription(!!result.hasSubscription);
             if (result.remaining_seconds != null) setTrialDisplayRemainingSeconds(Math.max(0, result.remaining_seconds));
             setPaymentReturn(null);
           } catch (e) {
@@ -1922,7 +1941,7 @@ function App() {
             userEmail={session?.user?.email ?? undefined}
             theme={theme}
             lang={lang}
-            showTrialSection={accessStatus === 'allowed' && !!profile?.phone}
+            showTrialSection={showTrialCountdown}
             showTrialCountdown={showTrialCountdown}
             trialDisplayRemainingSeconds={trialDisplayRemainingSeconds}
             trialMinutes={TRIAL_MINUTES}
@@ -1934,6 +1953,7 @@ function App() {
                 setProfile(p);
                 const result = await getAccessStatus(userId!, p);
                 setAccessStatus(result.status);
+                setHasSubscription(!!result.hasSubscription);
                 if (result.remaining_seconds != null) setTrialDisplayRemainingSeconds(Math.max(0, result.remaining_seconds));
                 setPaymentReturn(null);
               } catch (e) {
@@ -1948,7 +1968,7 @@ function App() {
 
         {/* Slide 1 (centro): Home (trial strip + conteúdo principal) */}
         <div className="flex-shrink-0 w-full min-w-full snap-start flex flex-col overflow-y-auto">
-          {accessStatus === 'allowed' && profile?.phone && (
+          {showTrialCountdown && (
             <div className="max-w-md mx-auto px-4 pt-1 pb-2 flex-shrink-0">
               <div className="rounded-xl bg-brand-500/15 dark:bg-brand-500/20 border border-brand-500/30 px-3 py-2.5">
                 <div className="flex items-center justify-between gap-3">
