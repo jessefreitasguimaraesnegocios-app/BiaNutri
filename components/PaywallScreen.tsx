@@ -3,7 +3,6 @@ import { Sparkles, Check, Loader2, Shield, Zap, CheckCircle2, XCircle, RefreshCw
 import { PLANS, PLANS_ORDER, type PlanId } from '../constants/plans';
 import { getSubscriptionBackUrl } from '../services/subscriptionService';
 import { useSubscriptionCheckout } from '../hooks/useSubscriptionCheckout';
-import SubscriptionPaymentModal from './SubscriptionPaymentModal';
 
 interface PaywallScreenProps {
   userId: string;
@@ -13,6 +12,8 @@ interface PaywallScreenProps {
   paymentReturn?: 'success' | 'failure' | null;
   onSuccess?: () => void;
   onVerifySubscription?: () => Promise<void>;
+  /** true quando o usuário clicou em Verificar assinatura e ainda não é assinante */
+  showNotSubscriberAfterVerify?: boolean;
   /** Voltar à tela de login (faz logout) */
   onBackToLogin?: () => void | Promise<void>;
 }
@@ -25,6 +26,7 @@ const paymentBannerTexts = {
     failureHint: 'Nenhuma cobrança foi feita. Você pode tentar outro plano ou pagar novamente quando quiser.',
     verifySubscription: 'Verificar assinatura',
     verifying: 'Verificando...',
+    notSubscriberYet: 'Você ainda não é assinante. O que está esperando!?',
   },
   en: {
     success: 'Payment approved',
@@ -33,6 +35,7 @@ const paymentBannerTexts = {
     failureHint: 'No charge was made. You can try another plan or pay again whenever you\'re ready.',
     verifySubscription: 'Verify subscription',
     verifying: 'Verifying...',
+    notSubscriberYet: "You're not a subscriber yet. What are you waiting for!?",
   },
 };
 
@@ -41,6 +44,7 @@ const paywallTexts = {
     title: 'Desbloqueie tudo',
     subtitle: 'Seu período de teste acabou. Escolha um plano e continue cuidando da sua nutrição.',
     perMonth: '/mês',
+    perDay: '/dia',
     total: 'total',
     bestValue: 'Melhor custo-benefício',
     popular: 'Mais popular',
@@ -60,6 +64,7 @@ const paywallTexts = {
     title: 'Unlock everything',
     subtitle: 'Your trial has ended. Choose a plan and keep managing your nutrition.',
     perMonth: '/mo',
+    perDay: '/day',
     total: 'total',
     bestValue: 'Best value',
     popular: 'Most popular',
@@ -85,6 +90,7 @@ const PaywallScreen: React.FC<PaywallScreenProps> = ({
   paymentReturn = null,
   onSuccess,
   onVerifySubscription,
+  showNotSubscriberAfterVerify = false,
   onBackToLogin,
 }) => {
   const [isVerifying, setIsVerifying] = useState(false);
@@ -224,7 +230,7 @@ const PaywallScreen: React.FC<PaywallScreenProps> = ({
                 key={planId}
                 className={`relative rounded-2xl border-2 overflow-hidden transition-all ${
                   featured
-                    ? 'border-brand-500 bg-brand-500/10 shadow-lg shadow-brand-500/20'
+                    ? 'border-brand-500 bg-brand-500/10 shadow-lg shadow-brand-500/20 animate-featured-plan-glow scale-[1.02]'
                     : isDark
                     ? 'border-slate-700 bg-slate-800/50'
                     : 'border-slate-200 bg-white'
@@ -236,37 +242,34 @@ const PaywallScreen: React.FC<PaywallScreenProps> = ({
                   </div>
                 )}
                 <div className="p-5">
-                  <div className="flex items-baseline justify-between gap-2 mb-1">
-                    <span
-                      className={`font-bold ${
-                        featured ? 'text-brand-700 dark:text-brand-300' : isDark ? 'text-white' : 'text-slate-900'
-                      }`}
-                    >
-                      {plan.labelShort}
-                    </span>
-                    <div className="text-right">
-                      {plan.durationMonths > 1 && (
-                        <span
-                          className={`text-xs ${
-                            isDark ? 'text-slate-400' : 'text-slate-500'
-                          }`}
-                        >
-                          R$ {plan.pricePerMonth.toFixed(2).replace('.', ',')}
-                          {t.perMonth}
-                        </span>
-                      )}
-                      <span
-                        className={`block font-bold text-lg ${
-                          featured ? 'text-brand-600 dark:text-brand-400' : isDark ? 'text-white' : 'text-slate-900'
-                        }`}
-                      >
-                        R$ {plan.totalPrice.toFixed(2).replace('.', ',')}
-                        {plan.durationMonths > 1 && (
-                          <span className="text-xs font-normal opacity-80"> {t.total}</span>
-                        )}
-                      </span>
-                    </div>
-                  </div>
+                  {(() => {
+                    return (
+                      <>
+                        <div className="flex items-baseline justify-between gap-2 mb-1">
+                          <span
+                            className={`font-bold ${
+                              featured ? 'text-brand-700 dark:text-brand-300' : isDark ? 'text-white' : 'text-slate-900'
+                            }`}
+                          >
+                            {plan.labelShort}
+                          </span>
+                          <div className="text-right flex flex-col items-end gap-0.5">
+                            <span className={`text-xs opacity-80 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                              R$ {plan.totalPrice.toFixed(2).replace('.', ',')} {t.total}
+                            </span>
+                            <span
+                              className={`text-sm ${
+                                featured ? 'text-brand-600 dark:text-brand-400' : isDark ? 'text-slate-200' : 'text-slate-700'
+                              }`}
+                            >
+                              R$ {plan.pricePerMonth.toFixed(2).replace('.', ',')}
+                              {t.perMonth}
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
                   <button
                     onClick={() => payment.handleSelectPlan(planId)}
                     disabled={!!payment.loadingPlan}
@@ -286,7 +289,8 @@ const PaywallScreen: React.FC<PaywallScreenProps> = ({
                     ) : (
                       <>
                         <Zap size={18} />
-                        {t.cta} – R$ {plan.totalPrice.toFixed(2).replace('.', ',')}
+                        {t.cta} – R$ {(plan.totalPrice / (plan.durationMonths === 12 ? 365 : plan.durationMonths * 30)).toFixed(2).replace('.', ',')}
+                        {t.perDay}
                       </>
                     )}
                   </button>
@@ -303,6 +307,16 @@ const PaywallScreen: React.FC<PaywallScreenProps> = ({
             }`}
           >
             {payment.error}
+          </div>
+        )}
+
+        {showNotSubscriberAfterVerify && (
+          <div
+            className={`rounded-xl p-4 text-center font-semibold text-sm ${
+              isDark ? 'bg-amber-500/20 text-amber-200 border border-amber-500/40' : 'bg-amber-50 text-amber-800 border border-amber-200'
+            }`}
+          >
+            {bt.notSubscriberYet}
           </div>
         )}
 
@@ -338,19 +352,6 @@ const PaywallScreen: React.FC<PaywallScreenProps> = ({
           <span className="font-semibold">Mercado Pago</span>
         </div>
       </div>
-
-      <SubscriptionPaymentModal
-        show={payment.showCardModal}
-        planId={payment.selectedPlanForCard}
-        loadingPlan={payment.loadingPlan}
-        userEmail={userEmail ?? ''}
-        theme={theme}
-        lang={lang}
-        payOnMPLabel={t.payOnMP}
-        onPayWithCard={payment.handlePayWithCard}
-        onPayOnMP={payment.handlePayOnMP}
-        onClose={payment.closeModal}
-      />
     </div>
   );
 };

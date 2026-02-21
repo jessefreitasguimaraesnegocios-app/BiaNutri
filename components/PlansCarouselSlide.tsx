@@ -3,7 +3,6 @@ import { Loader2, Zap, Shield, RefreshCw, XCircle } from 'lucide-react';
 import { PLANS, PLANS_ORDER, type PlanId } from '../constants/plans';
 import { getSubscriptionBackUrl, getSubscription, cancelSubscription } from '../services/subscriptionService';
 import { useSubscriptionCheckout } from '../hooks/useSubscriptionCheckout';
-import SubscriptionPaymentModal from './SubscriptionPaymentModal';
 
 interface PlansCarouselSlideProps {
   userId: string;
@@ -25,6 +24,7 @@ const texts = {
     title: 'Planos',
     subtitle: 'Assine antes do tempo acabar e continue usando sem limites.',
     perMonth: '/mês',
+    perDay: '/dia',
     total: 'total',
     bestValue: 'Melhor custo-benefício',
     cta: 'Assinar',
@@ -50,6 +50,7 @@ const texts = {
     title: 'Plans',
     subtitle: 'Subscribe before time runs out and keep using without limits.',
     perMonth: '/mo',
+    perDay: '/day',
     total: 'total',
     bestValue: 'Best value',
     cta: 'Subscribe',
@@ -222,7 +223,7 @@ const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
               key={planId}
               className={`relative rounded-2xl border-2 overflow-hidden transition-all ${
                 featured
-                  ? 'border-brand-500 bg-brand-500/10 shadow-lg shadow-brand-500/20'
+                  ? 'border-brand-500 bg-brand-500/10 shadow-lg shadow-brand-500/20 animate-featured-plan-glow scale-[1.02]'
                   : isDark
                   ? 'border-slate-700 bg-slate-800/50'
                   : 'border-slate-200 bg-white'
@@ -234,50 +235,34 @@ const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
                 </div>
               )}
               <div className={featured ? 'p-6' : 'p-5'}>
-                <div className="flex items-baseline justify-between gap-2 mb-1">
-                  <span
-                    className={`font-bold ${featured ? 'text-base' : ''} ${
-                      featured ? 'text-brand-700 dark:text-brand-300' : isDark ? 'text-white' : 'text-slate-900'
-                    }`}
-                  >
-                    {plan.labelShort}
-                  </span>
-                  <div className="text-right">
-                    {featured ? (
-                      <>
-                        <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                          R$ {plan.totalPrice.toFixed(2).replace('.', ',')} {t.total}
-                        </span>
+                {(() => {
+                  return (
+                    <>
+                      <div className="flex items-baseline justify-between gap-2 mb-1">
                         <span
-                          className={`block font-bold ${featured ? 'text-xl' : 'text-lg'} ${
-                            featured ? 'text-brand-600 dark:text-brand-400' : isDark ? 'text-white' : 'text-slate-900'
+                          className={`font-bold ${featured ? 'text-base' : ''} ${
+                            featured ? 'text-brand-700 dark:text-brand-300' : isDark ? 'text-white' : 'text-slate-900'
                           }`}
                         >
-                          R$ {plan.pricePerMonth.toFixed(2).replace('.', ',')}{t.perMonth}
+                          {plan.labelShort}
                         </span>
-                      </>
-                    ) : (
-                      <>
-                        {plan.durationMonths > 1 && (
-                          <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        <div className="text-right flex flex-col items-end gap-0.5">
+                          <span className={`text-xs opacity-80 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            R$ {plan.totalPrice.toFixed(2).replace('.', ',')} {t.total}
+                          </span>
+                          <span
+                            className={`text-sm ${
+                              featured ? 'text-brand-600 dark:text-brand-400' : isDark ? 'text-slate-200' : 'text-slate-700'
+                            }`}
+                          >
                             R$ {plan.pricePerMonth.toFixed(2).replace('.', ',')}
                             {t.perMonth}
                           </span>
-                        )}
-                        <span
-                          className={`block font-bold text-lg ${
-                            featured ? 'text-brand-600 dark:text-brand-400' : isDark ? 'text-white' : 'text-slate-900'
-                          }`}
-                        >
-                          R$ {plan.totalPrice.toFixed(2).replace('.', ',')}
-                          {plan.durationMonths > 1 && (
-                            <span className="text-xs font-normal opacity-80"> {t.total}</span>
-                          )}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </div>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
                 <button
                   onClick={() => payment.handleSelectPlan(planId)}
                   disabled={!!payment.loadingPlan}
@@ -297,7 +282,8 @@ const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
                   ) : (
                     <>
                       <Zap size={featured ? 20 : 18} />
-                      {t.cta} – R$ {(featured ? plan.pricePerMonth : plan.totalPrice).toFixed(2).replace('.', ',')}
+                      {t.cta} – R$ {(plan.totalPrice / (plan.durationMonths === 12 ? 365 : plan.durationMonths * 30)).toFixed(2).replace('.', ',')}
+                      {t.perDay}
                     </>
                   )}
                 </button>
@@ -402,19 +388,6 @@ const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
         <span>{t.secure}</span>
         <span className="font-semibold">Mercado Pago</span>
       </div>
-
-      <SubscriptionPaymentModal
-        show={payment.showCardModal}
-        planId={payment.selectedPlanForCard}
-        loadingPlan={payment.loadingPlan}
-        userEmail={userEmail ?? ''}
-        theme={theme}
-        lang={lang}
-        payOnMPLabel={t.payOnMP}
-        onPayWithCard={payment.handlePayWithCard}
-        onPayOnMP={payment.handlePayOnMP}
-        onClose={payment.closeModal}
-      />
     </div>
   );
 };

@@ -29,17 +29,36 @@ export function useSubscriptionCheckout({
     setSelectedPlanForCard(null);
   }, []);
 
-  const handleSelectPlan = useCallback((planId: PlanId) => {
-    setError(null);
-    setSelectedPlanForCard(planId);
-    setShowCardModal(true);
-  }, []);
+  /** Clica em Assinar: redireciona direto para o site do Mercado Pago (sem modal de cartão). */
+  const handleSelectPlan = useCallback(
+    async (planId: PlanId) => {
+      setError(null);
+      setLoadingPlan(planId);
+      try {
+        const { init_point, error: err } = await createSubscriptionCheckout(userId, planId, backUrl);
+        if (err) {
+          setError(errorMessage);
+          return;
+        }
+        if (init_point) {
+          window.location.href = init_point;
+        } else {
+          setError(errorMessage);
+        }
+      } catch {
+        setError(errorMessage);
+      } finally {
+        setLoadingPlan(null);
+      }
+    },
+    [userId, backUrl, errorMessage]
+  );
 
   const handlePayWithCard = useCallback(
-    async (cardTokenId: string) => {
+    async (_cardTokenId: string) => {
       const planId = selectedRef.current;
       if (!planId) return;
-      const res = await createSubscriptionCheckout(userId, planId, backUrl, cardTokenId);
+      const res = await createSubscriptionCheckout(userId, planId, backUrl, _cardTokenId);
       if (res.ok) {
         closeModal();
         onSuccess?.();

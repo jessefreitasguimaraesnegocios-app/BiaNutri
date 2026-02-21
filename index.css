@@ -15,3 +15,16 @@
 .animate-confetti-shine {
   animation: confetti-shine 1s ease-in-out infinite;
 }
+
+/* Destaque do plano 1 ano – brilho suave para chamar atenção */
+@keyframes featured-plan-glow {
+  0%, 100% {
+    box-shadow: 0 10px 40px -10px rgba(139, 92, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 16px 56px -8px rgba(139, 92, 246, 0.5);
+  }
+}
+.animate-featured-plan-glow {
+  animation: featured-plan-glow 2.5s ease-in-out infinite;
+}

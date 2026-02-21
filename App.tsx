@@ -94,6 +94,7 @@ function App() {
   const [hasSubscription, setHasSubscription] = useState(false);
   const [isCheckingAccess, setIsCheckingAccess] = useState(true);
   const [paymentReturn, setPaymentReturn] = useState<'success' | 'failure' | null>(null);
+  const [showNotSubscriberAfterVerify, setShowNotSubscriberAfterVerify] = useState(false);
   const carouselRef = useRef<HTMLDivElement>(null);
   /** Só redirecionar para Home uma vez ao obter acesso; não redirecionar de novo ao navegar. */
   const hasScrolledToHomeRef = useRef(false);
@@ -1860,6 +1861,7 @@ function App() {
           setPaymentReturn(null);
         }}
         onVerifySubscription={async () => {
+          setShowNotSubscriberAfterVerify(false);
           try {
             await syncSubscriptionFromMP(userId);
             const p = await getProfile(userId);
@@ -1869,11 +1871,13 @@ function App() {
             setHasSubscription(!!result.hasSubscription);
             if (result.remaining_seconds != null) setTrialDisplayRemainingSeconds(Math.max(0, result.remaining_seconds));
             setPaymentReturn(null);
+            if (result.status === 'paywall') setShowNotSubscriberAfterVerify(true);
           } catch (e) {
             console.error('Erro ao verificar assinatura:', e);
             setAccessStatus('paywall');
           }
         }}
+        showNotSubscriberAfterVerify={showNotSubscriberAfterVerify}
         onBackToLogin={async () => {
           try {
             await signOut();
