@@ -20,7 +20,27 @@ module.exports = {
           800: 'var(--brand-800)',
           900: 'var(--brand-900)',
         }
-      }
+      },
+      keyframes: {
+        pulseRing: {
+          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+          '50%': { opacity: '0.85', transform: 'scale(1.02)' },
+        },
+        gradientRotate: {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(360deg)' },
+        },
+        celebrate: {
+          '0%': { transform: 'scale(0.9)', opacity: '0.8' },
+          '50%': { transform: 'scale(1.08)', opacity: '1' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+      },
+      animation: {
+        'pulse-ring': 'pulseRing 2.5s ease-in-out infinite',
+        'gradient-rotate': 'gradientRotate 8s linear infinite',
+        'goal-celebrate': 'celebrate 0.5s ease-out forwards',
+      },
     },
   },
   plugins: [],
