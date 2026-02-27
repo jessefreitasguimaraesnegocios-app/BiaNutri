@@ -1,9 +1,9 @@
 
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Upload, ChevronLeft, Loader2, Save, ArrowRight, TrendingUp, Calculator, X, MessageSquarePlus, Calendar, Flame, Droplet } from 'lucide-react';
+import { Camera, Upload, ChevronLeft, Loader2, Save, ArrowRight, TrendingUp, Calculator, X, MessageSquarePlus, Calendar, Flame, Droplet, AlertTriangle } from 'lucide-react';
 import { TRANSLATIONS, MOCK_HISTORY, COLOR_PALETTES } from './constants';
-import { Language, Theme, NutritionalInfo, HistoryItem, WaterEntry, MealAnalysis, UserStats } from './types';
+import { Language, Theme, NutritionalInfo, HistoryItem, WaterEntry, MealAnalysis, UserStats, DietaryRestrictions } from './types';
 import { analyzeFoodImage, fileToGenerativePart, mealToSingleFood } from './services/geminiService';
 import { calculateWaterGoal, getTodayWaterTotal, getTodayWaterEntries } from './services/waterService';
 import Header from './components/Header';
@@ -11,6 +11,7 @@ import Footer from './components/Footer';
 import NutritionChart from './components/NutritionChart';
 import HistoryCard from './components/HistoryCard';
 import BioimpedanceModal from './components/BioimpedanceModal';
+import DietaryRestrictionsModal from './components/DietaryRestrictionsModal';
 import DailyTracker from './components/DailyTracker';
 import CalendarModal from './components/CalendarModal';
 import DayDetailModal from './components/DayDetailModal';
@@ -37,6 +38,7 @@ import type { Session } from '@supabase/supabase-js';
 import { TRIAL_SECONDS_LIMIT, TRIAL_MINUTES } from './constants/plans';
 
 import { getAvailablePets, PetDefinition } from './utils/petRegistry';
+import { getDietaryAlerts } from './utils/dietaryAlerts';
 
 function App() {
   // Logic to load pets (Get fresh list every render to handle dev HMR updates)
@@ -68,6 +70,8 @@ function App() {
   const [currentWeightInput, setCurrentWeightInput] = useState<string>('');
   const [isBMRTDEEModalOpen, setIsBMRTDEEModalOpen] = useState(false);
   const [isIMCModalOpen, setIsIMCModalOpen] = useState(false);
+  const [isDietaryRestrictionsOpen, setIsDietaryRestrictionsOpen] = useState(false);
+  const [dietaryRestrictions, setDietaryRestrictions] = useState<DietaryRestrictions | null>(null);
 
   // Pet e cor são carregados por usuário no efeito que depende de session
   const [selectedPetId, setSelectedPetId] = useState<string>(availablePets[0]?.id || 'panda.glb');
@@ -561,6 +565,25 @@ function App() {
     }
   }, [userId, isCalculatorOpen]);
 
+  // Carregar restrições alimentares do usuário
+  useEffect(() => {
+    if (!userId) {
+      setDietaryRestrictions(null);
+      return;
+    }
+    const key = `biaNutriDietaryRestrictions_${userId}`;
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      try {
+        setDietaryRestrictions(JSON.parse(saved) as DietaryRestrictions);
+      } catch {
+        setDietaryRestrictions(null);
+      }
+    } else {
+      setDietaryRestrictions(null);
+    }
+  }, [userId]);
+
   const triggerCamera = () => {
     if (cameraInputRef.current) {
       cameraInputRef.current.click();
@@ -730,6 +753,8 @@ function App() {
         ? (currentData.descriptionPt || currentData.description)
         : (currentData.descriptionEn || currentData.description);
 
+      const dietaryAlerts = getDietaryAlerts([currentData], dietaryRestrictions, lang);
+
       return (
         <div className="flex flex-col gap-6 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex items-center gap-2 mb-2">
@@ -741,6 +766,25 @@ function App() {
             </button>
             <h2 className="text-xl font-bold text-slate-800 dark:text-white">{isSaved ? texts.history : texts.analyzing.replace('...', '')}</h2>
           </div>
+
+          {dietaryAlerts.length > 0 && (
+            <div className="rounded-2xl border-2 border-red-500 bg-red-50 dark:bg-red-950/50 dark:border-red-500 p-4 animate-pulse shadow-lg shadow-red-500/20">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="flex-shrink-0 w-6 h-6 text-red-600 dark:text-red-400 mt-0.5" />
+                <div>
+                  <p className="font-bold text-red-800 dark:text-red-300">{texts.alertNotRecommended}</p>
+                  <p className="text-sm text-red-700 dark:text-red-400 mt-1">{texts.suggestionAvoid}</p>
+                  <ul className="mt-2 space-y-1 text-sm font-medium text-red-800 dark:text-red-300">
+                    {dietaryAlerts.map((a, i) => (
+                      <li key={i}>
+                        {a.detail ? `${texts[a.messageKey as keyof typeof texts]}: ${a.detail}` : (texts[a.messageKey as keyof typeof texts] as string)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800">
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">{displayName}</h1>
@@ -788,6 +832,8 @@ function App() {
       ? (currentMeal.mealDescriptionPt || currentMeal.mealDescription || `${currentMeal.foods.length} ${currentMeal.foods.length === 1 ? 'item identificado' : 'itens identificados'}`)
       : (currentMeal.mealDescriptionEn || currentMeal.mealDescription || `${currentMeal.foods.length} ${currentMeal.foods.length === 1 ? 'item identified' : 'items identified'}`);
 
+    const dietaryAlertsMeal = getDietaryAlerts(currentMeal.foods, dietaryRestrictions, lang);
+
     return (
       <div className="flex flex-col gap-6 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="flex items-center gap-2 mb-2">
@@ -799,6 +845,25 @@ function App() {
           </button>
           <h2 className="text-xl font-bold text-slate-800 dark:text-white">{isSaved ? texts.history : texts.analyzing.replace('...', '')}</h2>
         </div>
+
+        {dietaryAlertsMeal.length > 0 && (
+          <div className="rounded-2xl border-2 border-red-500 bg-red-50 dark:bg-red-950/50 dark:border-red-500 p-4 animate-pulse shadow-lg shadow-red-500/20">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="flex-shrink-0 w-6 h-6 text-red-600 dark:text-red-400 mt-0.5" />
+              <div>
+                <p className="font-bold text-red-800 dark:text-red-300">{texts.alertNotRecommended}</p>
+                <p className="text-sm text-red-700 dark:text-red-400 mt-1">{texts.suggestionAvoid}</p>
+                <ul className="mt-2 space-y-1 text-sm font-medium text-red-800 dark:text-red-300">
+                  {dietaryAlertsMeal.map((a, i) => (
+                    <li key={i}>
+                      {a.detail ? `${texts[a.messageKey as keyof typeof texts]}: ${a.detail}` : (texts[a.messageKey as keyof typeof texts] as string)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Resumo da Refeição */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800">
@@ -1476,6 +1541,15 @@ function App() {
         <Calculator size={20} />
         {texts.recalculate}
       </button>
+
+      {/* Botão Restrições Alimentares (cruz vermelha) */}
+      <button
+        onClick={() => setIsDietaryRestrictionsOpen(true)}
+        className="w-full bg-white dark:bg-slate-800 border-2 border-dashed border-red-200 dark:border-red-900/50 text-red-500 dark:text-red-400 rounded-2xl p-4 flex items-center justify-center gap-2 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+      >
+        <X size={22} strokeWidth={2.5} />
+        {texts.dietaryRestrictionsBtn}
+      </button>
       </div>
     );
   };
@@ -2087,6 +2161,15 @@ function App() {
         texts={texts}
         onUpdate={updateDailyTarget}
         userId={userId ?? undefined}
+      />
+
+      <DietaryRestrictionsModal
+        isOpen={isDietaryRestrictionsOpen}
+        onClose={() => setIsDietaryRestrictionsOpen(false)}
+        lang={lang}
+        texts={texts}
+        onSave={(r) => setDietaryRestrictions(r)}
+        userId={userId}
       />
 
       <Footer

@@ -88,6 +88,16 @@ export interface UserStats {
   currentWeightDate?: number; // timestamp da data do peso atual
 }
 
+/** Restrições alimentares do usuário (alergias, intolerâncias, diabético, hipertenso) - padrão Anvisa */
+export interface DietaryRestrictions {
+  hasAllergies: boolean;
+  allergies: string[];
+  hasIntolerances: boolean;
+  intolerances: string[];
+  isDiabetic: boolean;
+  isHypertensive: boolean;
+}
+
 export interface Translation {
   title: string;
   subtitle: string;
@@ -191,6 +201,22 @@ export interface Translation {
   waterCustom: string;
   waterHistory: string;
   waterStats: string;
+
+  // Dietary restrictions / Restrições alimentares
+  dietaryRestrictionsTitle: string;
+  dietaryRestrictionsBtn: string;
+  hasAllergies: string;
+  hasIntolerances: string;
+  isDiabetic: string;
+  isHypertensive: string;
+  yes: string;
+  no: string;
+  saveRestrictions: string;
+  alertNotRecommended: string;
+  alertContains: string;
+  alertHighSugar: string;
+  alertHighSodium: string;
+  suggestionAvoid: string;
 }
 
 export const SUPPORTED_LANGUAGES: Language[] = ['en', 'pt'];

@@ -198,6 +198,21 @@ export const TRANSLATIONS: Record<string, Translation> = {
     waterCustom: 'Custom Amount',
     waterHistory: 'Water History',
     waterStats: 'Water Stats',
+
+    dietaryRestrictionsTitle: 'Dietary Restrictions',
+    dietaryRestrictionsBtn: 'Allergies & Restrictions',
+    hasAllergies: 'Do you have any allergies?',
+    hasIntolerances: 'Do you have any intolerances?',
+    isDiabetic: 'Are you diabetic?',
+    isHypertensive: 'Are you hypertensive?',
+    yes: 'Yes',
+    no: 'No',
+    saveRestrictions: 'Save',
+    alertNotRecommended: 'Not recommended for you',
+    alertContains: 'Contains',
+    alertHighSugar: 'High sugar content',
+    alertHighSodium: 'May contain high sodium',
+    suggestionAvoid: 'We suggest avoiding or consuming with caution.',
   },
   pt: {
     title: 'BiaNutri',
@@ -295,6 +310,21 @@ export const TRANSLATIONS: Record<string, Translation> = {
     waterCustom: 'Quantidade Personalizada',
     waterHistory: 'Histórico de Água',
     waterStats: 'Estatísticas de Água',
+
+    dietaryRestrictionsTitle: 'Restrições Alimentares',
+    dietaryRestrictionsBtn: 'Alergias e Restrições',
+    hasAllergies: 'Você tem alguma alergia?',
+    hasIntolerances: 'Você tem alguma intolerância?',
+    isDiabetic: 'Você é diabético(a)?',
+    isHypertensive: 'Você é hipertenso(a)?',
+    yes: 'Sim',
+    no: 'Não',
+    saveRestrictions: 'Salvar',
+    alertNotRecommended: 'Não recomendado para você',
+    alertContains: 'Contém',
+    alertHighSugar: 'Alto teor de açúcar',
+    alertHighSodium: 'Pode conter muito sódio',
+    suggestionAvoid: 'Sugerimos evitar ou consumir com moderação.',
   }
 };
 
