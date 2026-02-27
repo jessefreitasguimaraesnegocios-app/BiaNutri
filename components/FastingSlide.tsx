@@ -9,6 +9,7 @@ import {
   clearCurrentFast,
   hoursBetween,
   dateToKey,
+  deleteFastingEntry,
   type CurrentFast,
 } from '../services/fastingService';
 import FastingTimerRing from './FastingTimerRing';
@@ -40,7 +41,7 @@ const texts = {
     end: 'Fim',
     hours: 'horas',
     register: 'Registrar jejum hoje',
-    startNow: 'Iniciar jejum agora',
+    startNow: 'Iniciar jejum',
     startTimeChoice: 'Quando começou?',
     useCurrentTime: 'Horário atual',
     startedAt: 'Comecei às',
@@ -61,6 +62,7 @@ const texts = {
     swipeHint: '← Voltar para o app',
     recentFasts: 'Últimos jejums',
     lastDays: 'Últimos 14 dias',
+    deleteEntry: 'Excluir marcação',
     expectedEnd: 'Horário final esperado',
     today: 'Hoje',
     tomorrow: 'Amanhã',
@@ -78,7 +80,7 @@ const texts = {
     end: 'End',
     hours: 'hours',
     register: 'Log fast today',
-    startNow: 'Start fast now',
+    startNow: 'Start fast',
     startTimeChoice: 'When did you start?',
     useCurrentTime: 'Current time',
     startedAt: 'I started at',
@@ -99,6 +101,7 @@ const texts = {
     swipeHint: '← Back to app',
     recentFasts: 'Recent fasts',
     lastDays: 'Last 14 days',
+    deleteEntry: 'Delete entry',
     expectedEnd: 'Expected end time',
     today: 'Today',
     tomorrow: 'Tomorrow',
@@ -340,6 +343,11 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
 
   const totalAll = entries.reduce((sum, e) => sum + e.hours, 0);
   const handleSelectEntry = (entry: FastingEntry) => setSelectedEntry(entry);
+  const handleDeleteEntry = (entry: FastingEntry) => {
+    deleteFastingEntry(userId, entry.date);
+    setEntries(getFastingEntries(userId));
+    setSelectedEntry(null);
+  };
 
   const goalReached = !!currentFast && currentFast.cycle !== 'custom' && elapsedSeconds >= currentFast.plannedHours * 3600;
   const expectedEndStr = currentFast
@@ -444,6 +452,7 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
             selectedEntry={selectedEntry}
             onCloseDayModal={() => setSelectedEntry(null)}
             onSelectEntry={handleSelectEntry}
+            onDeleteEntry={handleDeleteEntry}
             totalForWeek={totalForWeek}
             totalForMonth={totalForMonth}
             totalAll={totalAll}
@@ -459,6 +468,7 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
               noData: t.noData,
               recentFasts: t.recentFasts,
               lastDays: t.lastDays,
+              deleteEntry: t.deleteEntry,
             }}
           />
         </>

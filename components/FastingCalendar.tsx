@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Clock, TrendingUp, Flame } from 'lucide-react';
+import { X, Clock, TrendingUp, Flame, Trash2 } from 'lucide-react';
 import type { FastingEntry } from '../types';
 import { dateToKey } from '../services/fastingService';
 
@@ -12,6 +12,7 @@ interface FastingCalendarProps {
   selectedEntry: FastingEntry | null;
   onCloseDayModal: () => void;
   onSelectEntry: (entry: FastingEntry) => void;
+  onDeleteEntry?: (entry: FastingEntry) => void;
   totalForWeek: (dateStr: string) => number;
   totalForMonth: (dateStr: string) => number;
   totalAll: number;
@@ -27,6 +28,7 @@ interface FastingCalendarProps {
     noData: string;
     recentFasts: string;
     lastDays: string;
+    deleteEntry: string;
   };
 }
 
@@ -55,6 +57,7 @@ const FastingCalendar: React.FC<FastingCalendarProps> = ({
   selectedEntry,
   onCloseDayModal,
   onSelectEntry,
+  onDeleteEntry,
   totalForWeek,
   totalForMonth,
   totalAll,
@@ -253,6 +256,18 @@ const FastingCalendar: React.FC<FastingCalendarProps> = ({
                 </p>
               </div>
             </div>
+            {onDeleteEntry && (
+              <button
+                onClick={() => {
+                  onDeleteEntry(selectedEntry);
+                  onCloseDayModal();
+                }}
+                className="w-full mt-3 py-3 rounded-xl font-bold bg-red-500/20 dark:bg-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-500/30 dark:hover:bg-red-500/30 border border-red-500/50 flex items-center justify-center gap-2 transition-colors"
+              >
+                <Trash2 size={18} />
+                {t.deleteEntry}
+              </button>
+            )}
             <button
               onClick={onCloseDayModal}
               className="w-full mt-4 py-3 rounded-xl font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"

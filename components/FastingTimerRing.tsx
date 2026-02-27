@@ -30,6 +30,8 @@ interface FastingTimerRingProps {
 const SIZE = 200;
 const STROKE = 12;
 const R = (SIZE - STROKE) / 2;
+const INNER_DIAMETER = R * 2; // 188px - diâmetro interno do anel
+const BUTTON_SIZE = INNER_DIAMETER - 8; // botão ocupa quase toda a circunferência (margem 4px cada lado)
 const CX = SIZE / 2;
 const CY = SIZE / 2;
 const CIRCUMFERENCE = 2 * Math.PI * R;
@@ -43,6 +45,7 @@ const FastingTimerRing: React.FC<FastingTimerRingProps> = ({
   suggestedCycleLabel,
   t,
 }) => {
+  const labelPathId = React.useId().replace(/:/g, '');
   const isActive = !!currentFast;
   const plannedSeconds = currentFast ? currentFast.plannedHours * 3600 : 3600;
   const progress = Math.min(1, elapsedSeconds / plannedSeconds);
@@ -128,16 +131,38 @@ const FastingTimerRing: React.FC<FastingTimerRingProps> = ({
             )}
           </>
         ) : (
-          <div className="flex flex-col items-center gap-3 px-4">
-            <p className={`text-sm font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-              {suggestedCycleLabel}
-            </p>
+          <div className="relative flex flex-col items-center justify-center">
+            {/* Label do ciclo em arco ao redor do botão (dinâmico) */}
+            <svg
+              className="absolute pointer-events-none"
+              width={SIZE}
+              height={SIZE}
+              viewBox={`0 0 ${SIZE} ${SIZE}`}
+            >
+              <defs>
+                <path
+                  id={labelPathId}
+                  d={`M ${CX - R + 6} ${CY} A ${R - 6} ${R - 6} 0 0 0 ${CX + R - 6} ${CY}`}
+                />
+              </defs>
+              <text
+                className="fill-current font-bold text-sm"
+                style={{ color: isDark ? 'rgb(148, 163, 184)' : 'rgb(100, 116, 139)' }}
+              >
+                <textPath href={`#${labelPathId}`} startOffset="50%" textAnchor="middle">
+                  {suggestedCycleLabel}
+                </textPath>
+              </text>
+            </svg>
             <button
               onClick={onStartClick}
-              className="flex items-center justify-center gap-2 py-3 px-6 rounded-2xl font-bold bg-brand-500 hover:bg-brand-600 text-white shadow-lg shadow-brand-500/30 transition-all hover:scale-105 active:scale-100"
+              style={{ width: BUTTON_SIZE, height: BUTTON_SIZE }}
+              className="relative z-10 rounded-full flex flex-col items-center justify-center gap-0.5 font-bold bg-brand-500 hover:bg-brand-600 text-white transition-all hover:scale-[1.02] active:scale-[0.98] select-none shadow-[0_8px_0_0_rgba(0,0,0,0.18),0_14px_32px_-4px_rgba(0,0,0,0.22)] hover:shadow-[0_6px_0_0_rgba(0,0,0,0.18),0_16px_36px_-4px_rgba(0,0,0,0.28)] active:shadow-[0_2px_0_0_rgba(0,0,0,0.2)] border-2 border-brand-400/50 dark:border-brand-600/50"
             >
-              <Play size={20} fill="currentColor" />
-              {t.startNow}
+              <Play size={28} fill="currentColor" className="flex-shrink-0" />
+              <span className="text-xl leading-tight font-bold px-3 text-center max-w-[85%]">
+                {t.startNow}
+              </span>
             </button>
           </div>
         )}
