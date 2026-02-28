@@ -25,6 +25,7 @@ const CompanionContainer: React.FC<CompanionContainerProps> = ({
     const [animationState, setAnimationState] = useState<PetState>('idle');
     const [message, setMessage] = useState<string>('Olá! Sou seu Pet Virtual.');
     const [life, setLife] = useState(100);
+    const [showInteractions, setShowInteractions] = useState(false);
 
     // Life Decay System
     useEffect(() => {
@@ -161,31 +162,60 @@ const CompanionContainer: React.FC<CompanionContainerProps> = ({
     };
 
     return (
-        <div className="relative w-full h-80 mx-auto -mb-10 z-10 group flex flex-col items-center">
-            {renderPet()}
+        <div className="relative w-full h-80 mx-auto -mb-10 z-10 flex flex-col items-center">
+            <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setShowInteractions((s) => !s)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowInteractions((s) => !s); } }}
+                className="w-full flex-1 min-h-0 flex flex-col items-center cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded-xl"
+                aria-label={showInteractions ? 'Ocultar ações do pet' : 'Mostrar ações do pet'}
+            >
+                {renderPet()}
+            </div>
 
             {/* Life Bar */}
             <div className="w-32 h-2 bg-slate-200 dark:bg-slate-700 rounded-full mt-2 overflow-hidden border border-slate-300 dark:border-slate-600 relative z-10">
                 <div
-                    className={`h - full transition - all duration - 500 ${life < 20 ? 'bg-red-500' : 'bg-green-500'} `}
-                    style={{ width: `${life}% ` }}
+                    className={`h-full transition-all duration-500 ${life < 20 ? 'bg-red-500' : 'bg-green-500'}`}
+                    style={{ width: `${life}%` }}
                 ></div>
             </div>
             <p className="text-[10px] text-slate-400 mt-1 font-mono relative z-10">Energia: {Math.floor(life)}%</p>
 
-            {/* Interaction Controls */}
-            <div className="flex gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity relative z-10 flex-wrap justify-center">
-                <button onClick={eat} className="bg-orange-100 hover:bg-orange-200 text-orange-600 dark:text-orange-900 border border-orange-200 text-xs px-3 py-1 rounded-full font-bold transition-colors">
+            {/* Interaction Controls - aparecem ao clicar no pet */}
+            <div
+                className={`flex gap-2 mt-3 transition-all duration-200 relative z-10 flex-wrap justify-center overflow-hidden ${
+                    showInteractions ? 'opacity-100 max-h-20' : 'opacity-0 max-h-0 mt-0 pointer-events-none'
+                }`}
+            >
+                <button
+                    type="button"
+                    onClick={eat}
+                    className="bg-orange-100 hover:bg-orange-200 active:scale-95 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 dark:hover:bg-orange-900/50 border border-orange-200 dark:border-orange-700 text-xs px-3 py-2 rounded-xl font-bold transition-all shadow-sm"
+                >
                     🍎 Comer
                 </button>
-                <button onClick={play} className="bg-blue-100 hover:bg-blue-200 text-blue-600 dark:text-blue-900 border border-blue-200 text-xs px-3 py-1 rounded-full font-bold transition-colors">
+                <button
+                    type="button"
+                    onClick={play}
+                    className="bg-blue-100 hover:bg-blue-200 active:scale-95 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-700 text-xs px-3 py-2 rounded-xl font-bold transition-all shadow-sm"
+                >
                     ⚽ Brincar
                 </button>
-                <button onClick={sleep} className="bg-indigo-100 hover:bg-indigo-200 text-indigo-600 dark:text-indigo-900 border border-indigo-200 text-xs px-3 py-1 rounded-full font-bold transition-colors">
+                <button
+                    type="button"
+                    onClick={sleep}
+                    className="bg-indigo-100 hover:bg-indigo-200 active:scale-95 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-700 text-xs px-3 py-2 rounded-xl font-bold transition-all shadow-sm"
+                >
                     💤 Dormir
                 </button>
                 {onVariantChange && (
-                    <button onClick={onVariantChange} className="bg-purple-100 hover:bg-purple-200 text-purple-600 dark:text-purple-900 border border-purple-200 text-xs px-3 py-1 rounded-full font-bold transition-colors">
+                    <button
+                        type="button"
+                        onClick={onVariantChange}
+                        className="bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 text-xs px-3 py-2 rounded-xl font-bold transition-all shadow-sm"
+                    >
                         🔄 Trocar
                     </button>
                 )}
