@@ -25,6 +25,8 @@ interface FastingCyclePickerProps {
   onEndTimeChange?: (v: string) => void;
   customHours: number;
   onCustomHoursChange: (v: number) => void;
+  simulatorHours: number;
+  onSimulatorHoursChange: (v: number) => void;
   computedHours: number;
   /** When active fast: current fast and change handler */
   currentFast: CurrentFast | null;
@@ -59,6 +61,8 @@ const FastingCyclePicker: React.FC<FastingCyclePickerProps> = ({
   onEndTimeChange,
   customHours,
   onCustomHoursChange,
+  simulatorHours,
+  onSimulatorHoursChange,
   computedHours,
   currentFast,
   onCycleChangeActive,
@@ -93,12 +97,12 @@ const FastingCyclePicker: React.FC<FastingCyclePickerProps> = ({
     if (!hoursScrollRef.current) return;
     const index = Math.round(hoursScrollRef.current.scrollTop / ITEM_HEIGHT_H);
     const h = Math.max(1, Math.min(24, index + 1));
-    onCustomHoursChange(h);
-  }, [onCustomHoursChange]);
+    onSimulatorHoursChange(h);
+  }, [onSimulatorHoursChange]);
 
   useEffect(() => {
-    if (cycle === 'custom') scrollHoursTo(customHours);
-  }, [cycle, customHours, scrollHoursTo]);
+    if (t.timeSimulatorTitle) scrollHoursTo(simulatorHours);
+  }, [simulatorHours, scrollHoursTo]);
 
   const handleHoursScroll = useCallback(() => {
     if (hoursScrollTimeoutRef.current) clearTimeout(hoursScrollTimeoutRef.current);
@@ -202,78 +206,72 @@ const FastingCyclePicker: React.FC<FastingCyclePickerProps> = ({
       )}
       {t.timeSimulatorTitle ? (
         <div className="space-y-4 mt-6">
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase text-slate-500 block">
+          <div className="space-y-2 flex flex-col items-center">
+            <label className="text-xs font-bold uppercase text-slate-500">
               {t.fastOfHours} {t.hours}
             </label>
-            {cycle === 'custom' ? (
-              <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 w-full max-w-[200px]">
+              <div
+                className={`flex items-center justify-center py-2 rounded-xl font-mono text-2xl font-bold ${isDark ? 'bg-slate-700/80 text-white' : 'bg-slate-200/80 text-slate-900'}`}
+                aria-live="polite"
+              >
+                {simulatorHours} {t.hours}
+              </div>
+              <div
+                className="relative flex flex-col overflow-hidden rounded-xl border border-slate-600/50 dark:border-slate-500/50"
+                style={{ height: ITEM_HEIGHT_H * VISIBLE_ROWS_H }}
+              >
                 <div
-                  className={`flex items-center justify-center py-2 rounded-xl font-mono text-2xl font-bold ${isDark ? 'bg-slate-700/80 text-white' : 'bg-slate-200/80 text-slate-900'}`}
-                  aria-live="polite"
-                >
-                  {customHours} {t.hours}
-                </div>
+                  className="absolute left-0 right-0 top-0 z-10 pointer-events-none"
+                  style={{
+                    height: (ITEM_HEIGHT_H * VISIBLE_ROWS_H - ITEM_HEIGHT_H) / 2,
+                    background: isDark
+                      ? 'linear-gradient(to bottom, rgb(30 41 59) 0%, transparent 100%)'
+                      : 'linear-gradient(to bottom, rgb(248 250 252) 0%, transparent 100%)',
+                  }}
+                />
                 <div
-                  className="relative flex flex-col overflow-hidden rounded-xl border border-slate-600/50 dark:border-slate-500/50"
+                  className="absolute left-0 right-0 bottom-0 z-10 pointer-events-none"
+                  style={{
+                    height: (ITEM_HEIGHT_H * VISIBLE_ROWS_H - ITEM_HEIGHT_H) / 2,
+                    background: isDark
+                      ? 'linear-gradient(to top, rgb(30 41 59) 0%, transparent 100%)'
+                      : 'linear-gradient(to top, rgb(248 250 252) 0%, transparent 100%)',
+                  }}
+                />
+                <div
+                  className="absolute left-0 right-0 z-10 pointer-events-none border-2 border-brand-500 rounded-lg"
+                  style={{
+                    top: (ITEM_HEIGHT_H * VISIBLE_ROWS_H - ITEM_HEIGHT_H) / 2,
+                    height: ITEM_HEIGHT_H,
+                  }}
+                />
+                <div
+                  ref={hoursScrollRef}
+                  className="overflow-y-auto overflow-x-hidden snap-y snap-mandatory scroll-smooth"
                   style={{ height: ITEM_HEIGHT_H * VISIBLE_ROWS_H }}
+                  onScroll={handleHoursScroll}
                 >
-                  <div
-                    className="absolute left-0 right-0 top-0 z-10 pointer-events-none"
-                    style={{
-                      height: (ITEM_HEIGHT_H * VISIBLE_ROWS_H - ITEM_HEIGHT_H) / 2,
-                      background: isDark
-                        ? 'linear-gradient(to bottom, rgb(30 41 59) 0%, transparent 100%)'
-                        : 'linear-gradient(to bottom, rgb(248 250 252) 0%, transparent 100%)',
-                    }}
-                  />
-                  <div
-                    className="absolute left-0 right-0 bottom-0 z-10 pointer-events-none"
-                    style={{
-                      height: (ITEM_HEIGHT_H * VISIBLE_ROWS_H - ITEM_HEIGHT_H) / 2,
-                      background: isDark
-                        ? 'linear-gradient(to top, rgb(30 41 59) 0%, transparent 100%)'
-                        : 'linear-gradient(to top, rgb(248 250 252) 0%, transparent 100%)',
-                    }}
-                  />
-                  <div
-                    className="absolute left-0 right-0 z-10 pointer-events-none border-2 border-brand-500 rounded-lg"
-                    style={{
-                      top: (ITEM_HEIGHT_H * VISIBLE_ROWS_H - ITEM_HEIGHT_H) / 2,
-                      height: ITEM_HEIGHT_H,
-                    }}
-                  />
-                  <div
-                    ref={hoursScrollRef}
-                    className="overflow-y-auto overflow-x-hidden snap-y snap-mandatory scroll-smooth"
-                    style={{ height: ITEM_HEIGHT_H * VISIBLE_ROWS_H }}
-                    onScroll={handleHoursScroll}
-                  >
-                    <div style={{ height: PADDING_Y_H }} />
-                    {Array.from({ length: 24 }, (_, i) => i + 1).map((h) => (
-                      <div
-                        key={h}
-                        className={`flex items-center justify-center font-mono shrink-0 snap-center ${
-                          customHours === h
-                            ? `text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`
-                            : isDark
-                            ? 'text-lg text-slate-300'
-                            : 'text-lg text-slate-600'
-                        }`}
-                        style={{ height: ITEM_HEIGHT_H }}
-                      >
-                        {h}
-                      </div>
-                    ))}
-                    <div style={{ height: PADDING_Y_H }} />
-                  </div>
+                  <div style={{ height: PADDING_Y_H }} />
+                  {Array.from({ length: 24 }, (_, i) => i + 1).map((h) => (
+                    <div
+                      key={h}
+                      className={`flex items-center justify-center font-mono shrink-0 snap-center ${
+                        simulatorHours === h
+                          ? `text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`
+                          : isDark
+                          ? 'text-lg text-slate-300'
+                          : 'text-lg text-slate-600'
+                      }`}
+                      style={{ height: ITEM_HEIGHT_H }}
+                    >
+                      {h}
+                    </div>
+                  ))}
+                  <div style={{ height: PADDING_Y_H }} />
                 </div>
               </div>
-            ) : (
-              <p className={`font-mono text-lg ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                {CYCLES.find((c) => c.id === cycle)?.hours ?? 16} {t.hours}
-              </p>
-            )}
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
@@ -290,7 +288,7 @@ const FastingCyclePicker: React.FC<FastingCyclePickerProps> = ({
             <div className="space-y-1">
               <span className="text-xs font-bold uppercase text-slate-500">{t.end}</span>
               <div className={`p-3 rounded-xl font-mono text-lg ${isDark ? 'bg-slate-800 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-900'}`}>
-                {suggestedEndTime(startTime, cycle === 'custom' ? customHours : CYCLES.find((c) => c.id === cycle)?.hours ?? 16)}
+                {suggestedEndTime(startTime, simulatorHours)}
               </div>
             </div>
           </div>

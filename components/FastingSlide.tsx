@@ -344,6 +344,7 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
   const [startTime, setStartTime] = useState('20:00');
   const [endTime, setEndTime] = useState('12:00');
   const [customHours, setCustomHours] = useState(16);
+  const [simulatorHours, setSimulatorHours] = useState(16);
   const [entries, setEntries] = useState<FastingEntry[]>([]);
   const [currentFast, setCurrentFastState] = useState<CurrentFast | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -395,7 +396,12 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
     setCycle(c);
     if (c !== 'custom') {
       const opt = CYCLES.find((x) => x.id === c);
-      if (opt) setEndTime(suggestedEndTime(startTime, opt.hours));
+      if (opt) {
+        setEndTime(suggestedEndTime(startTime, opt.hours));
+        setSimulatorHours(opt.hours);
+      }
+    } else {
+      setSimulatorHours(customHours);
     }
   };
 
@@ -412,6 +418,15 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
   const handleCustomHoursChange = (v: number) => {
     setCustomHours(v);
     setEndTime(suggestedEndTime(startTime, v));
+    setSimulatorHours(v);
+  };
+
+  const handleSimulatorHoursChange = (v: number) => {
+    setSimulatorHours(v);
+    if (cycle === 'custom') {
+      setCustomHours(v);
+      setEndTime(suggestedEndTime(startTime, v));
+    }
   };
 
   const computedHours =
@@ -595,6 +610,8 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
           onEndTimeChange={setEndTime}
           customHours={customHours}
           onCustomHoursChange={handleCustomHoursChange}
+          simulatorHours={simulatorHours}
+          onSimulatorHoursChange={handleSimulatorHoursChange}
           computedHours={computedHours}
           currentFast={currentFast}
           onCycleChangeActive={handleChangeCycle}
