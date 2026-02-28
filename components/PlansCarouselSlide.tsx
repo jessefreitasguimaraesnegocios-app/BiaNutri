@@ -27,6 +27,7 @@ const texts = {
     perDay: '/dia',
     total: 'total',
     bestValue: 'Melhor custo-benefício',
+    promotion: 'Promoção',
     cta: 'Assinar',
     secure: 'Pagamento seguro',
     error: 'Erro ao abrir checkout. Tente novamente.',
@@ -53,6 +54,7 @@ const texts = {
     perDay: '/day',
     total: 'total',
     bestValue: 'Best value',
+    promotion: 'Promotion',
     cta: 'Subscribe',
     secure: 'Secure payment',
     error: 'Error opening checkout. Please try again.',
@@ -235,6 +237,11 @@ const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
                 </div>
               )}
               <div className={featured ? 'p-6' : 'p-5'}>
+                {featured && (
+                  <p className="text-center font-bold text-xl text-brand-700 dark:text-brand-300 mb-2 animate-promotion-pulse">
+                    {t.promotion}
+                  </p>
+                )}
                 {(() => {
                   return (
                     <>

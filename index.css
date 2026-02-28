@@ -41,3 +41,12 @@
 .fasting-phase-green-border {
   animation: ring-pulse-green 2s ease-in-out infinite;
 }
+
+/* Título Promoção – pulsar suave para chamar atenção */
+@keyframes promotion-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.82; }
+}
+.animate-promotion-pulse {
+  animation: promotion-pulse 2.2s ease-in-out infinite;
+}
