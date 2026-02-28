@@ -200,7 +200,7 @@ const FastingCyclePicker: React.FC<FastingCyclePickerProps> = ({
       </div>
 
       {t.timeSimulatorTitle && (
-        <p className={`text-center text-xl font-bold mt-16 mb-1 ${isDark ? 'text-brand-400' : 'text-brand-600'}`}>
+        <p className={`text-center text-sm font-bold uppercase tracking-wider mt-16 mb-1 ${isDark ? 'text-brand-400' : 'text-brand-600'}`}>
           {t.timeSimulatorTitle}
         </p>
       )}
