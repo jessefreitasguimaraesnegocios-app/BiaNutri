@@ -40,6 +40,7 @@ interface FastingCyclePickerProps {
     expectedEnd: string;
     changeCycle: string;
     apply: string;
+    timeSimulatorTitle?: string;
   };
 }
 
@@ -157,6 +158,11 @@ const FastingCyclePicker: React.FC<FastingCyclePickerProps> = ({
         ))}
       </div>
 
+      {t.timeSimulatorTitle && (
+        <p className={`text-center text-xl font-bold mt-10 mb-1 ${isDark ? 'text-brand-400' : 'text-brand-600'}`}>
+          {t.timeSimulatorTitle}
+        </p>
+      )}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
           <label className="text-xs font-bold uppercase text-slate-500">{t.start}</label>

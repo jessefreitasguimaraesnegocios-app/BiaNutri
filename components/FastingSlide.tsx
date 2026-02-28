@@ -222,6 +222,7 @@ const texts = {
     totalMonth: 'Total este mês',
     totalAll: 'Total geral',
     close: 'Fechar',
+    timeSimulatorTitle: 'Simulador de Horário',
     noData: 'Nenhum jejum neste dia.',
     swipeHint: '← Voltar para o app',
     recentFasts: 'Últimos jejums',
@@ -267,6 +268,7 @@ const texts = {
     totalMonth: 'Total this month',
     totalAll: 'Total overall',
     close: 'Close',
+    timeSimulatorTitle: 'Time Simulator',
     noData: 'No fast on this day.',
     swipeHint: '← Back to app',
     recentFasts: 'Recent fasts',
@@ -592,7 +594,7 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
           expectedEndStr={expectedEndStr}
           isDark={isDark}
           lang={lang}
-          t={{ cycle: t.cycle, start: t.start, end: t.end, hours: t.hours, expectedEnd: t.expectedEnd, changeCycle: t.changeCycle, apply: t.apply }}
+          t={{ cycle: t.cycle, start: t.start, end: t.end, hours: t.hours, expectedEnd: t.expectedEnd, changeCycle: t.changeCycle, apply: t.apply, timeSimulatorTitle: t.timeSimulatorTitle }}
         />
       </div>
 
