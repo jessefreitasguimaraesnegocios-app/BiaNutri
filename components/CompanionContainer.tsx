@@ -162,7 +162,7 @@ const CompanionContainer: React.FC<CompanionContainerProps> = ({
     };
 
     return (
-        <div className="relative w-full h-80 mx-auto -mb-10 z-10 flex flex-col items-center">
+        <div className="relative w-full h-80 mx-auto z-10 flex flex-col items-center">
             <div
                 role="button"
                 tabIndex={0}
@@ -183,7 +183,7 @@ const CompanionContainer: React.FC<CompanionContainerProps> = ({
             </div>
             <p className="text-[10px] text-slate-400 mt-1 font-mono relative z-10">Energia: {Math.floor(life)}%</p>
 
-            {/* Interaction Controls - aparecem ao clicar no pet */}
+            {/* Interaction Controls - aparecem ao clicar no pet, logo abaixo do pet */}
             <div
                 className={`flex gap-2 mt-3 transition-all duration-200 relative z-10 flex-wrap justify-center overflow-hidden ${
                     showInteractions ? 'opacity-100 max-h-20' : 'opacity-0 max-h-0 mt-0 pointer-events-none'
