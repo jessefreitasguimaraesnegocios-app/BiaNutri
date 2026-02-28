@@ -25,6 +25,7 @@ export const ALLERGEN_DEFINITIONS: AllergenDefinition[] = [
   { id: 'soy', keywordsPt: ['soja', 'soy', 'soya'], keywordsEn: ['soy', 'soya'], labelPt: 'Soja', labelEn: 'Soy' },
   { id: 'egg', keywordsPt: ['ovo', 'egg', 'ovos', 'eggs'], keywordsEn: ['egg', 'eggs'], labelPt: 'Ovo', labelEn: 'Egg' },
   { id: 'fish', keywordsPt: ['peixe', 'fish', 'pescado'], keywordsEn: ['fish'], labelPt: 'Peixe', labelEn: 'Fish' },
+  { id: 'pepper', keywordsPt: ['pimenta', 'pimentão', 'pimentao', 'pimentas', 'chili', 'páprica', 'paprica'], keywordsEn: ['pepper', 'peppers', 'chili', 'chilli', 'bell pepper', 'paprika'], labelPt: 'Pimenta', labelEn: 'Pepper' },
 ];
 
 /** Limite de açúcar (g) para considerar "alto" para diabéticos */
