@@ -41,6 +41,8 @@ interface FastingCyclePickerProps {
     changeCycle: string;
     apply: string;
     timeSimulatorTitle?: string;
+    fastOfHours?: string;
+    whenStarts?: string;
   };
 }
 
@@ -67,6 +69,15 @@ const FastingCyclePicker: React.FC<FastingCyclePickerProps> = ({
 }) => {
   const isActive = !!currentFast;
   const hint = (hintPt: string, hintEn: string) => (lang === 'pt' ? hintPt : hintEn);
+
+  const suggestedEndTime = (start: string, hours: number): string => {
+    const [h, m] = start.split(':').map(Number);
+    let endMinutes = h * 60 + (m ?? 0) + hours * 60;
+    if (endMinutes >= 24 * 60) endMinutes -= 24 * 60;
+    const eh = Math.floor(endMinutes / 60);
+    const em = endMinutes % 60;
+    return `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+  };
 
   if (isActive) {
     return (
@@ -163,6 +174,50 @@ const FastingCyclePicker: React.FC<FastingCyclePickerProps> = ({
           {t.timeSimulatorTitle}
         </p>
       )}
+      {t.timeSimulatorTitle ? (
+        <div className="space-y-4 mt-4">
+          <div className="space-y-1">
+            <label className="text-xs font-bold uppercase text-slate-500">
+              {t.fastOfHours}{' '}
+              {cycle === 'custom' ? (
+                <input
+                  type="number"
+                  min={1}
+                  max={24}
+                  value={customHours}
+                  onChange={(e) => onCustomHoursChange(Number(e.target.value) || 16)}
+                  className={`inline-block w-14 mx-1 px-2 py-1 rounded-lg font-mono text-lg border-0 align-middle ${
+                    isDark ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-900'
+                  }`}
+                />
+              ) : (
+                <span className={isDark ? 'text-slate-200' : 'text-slate-800'}>{CYCLES.find((c) => c.id === cycle)?.hours ?? 16}</span>
+              )}{' '}
+              {t.hours}
+            </label>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs font-bold uppercase text-slate-500">{t.whenStarts ?? t.start}</label>
+              <input
+                type="time"
+                value={startTime}
+                onChange={(e) => onStartTimeChange(e.target.value)}
+                className={`w-full p-3 rounded-xl font-mono text-lg border-0 ${
+                  isDark ? 'bg-slate-800 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-900'
+                }`}
+              />
+            </div>
+            <div className="space-y-1">
+              <span className="text-xs font-bold uppercase text-slate-500">{t.end}</span>
+              <div className={`p-3 rounded-xl font-mono text-lg ${isDark ? 'bg-slate-800 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-900'}`}>
+                {suggestedEndTime(startTime, cycle === 'custom' ? customHours : CYCLES.find((c) => c.id === cycle)?.hours ?? 16)}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
           <label className="text-xs font-bold uppercase text-slate-500">{t.start}</label>
@@ -208,6 +263,8 @@ const FastingCyclePicker: React.FC<FastingCyclePickerProps> = ({
         <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
           {computedHours.toFixed(1)} {t.hours}
         </p>
+      )}
+        </>
       )}
     </div>
   );

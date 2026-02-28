@@ -223,6 +223,8 @@ const texts = {
     totalAll: 'Total geral',
     close: 'Fechar',
     timeSimulatorTitle: 'Simulador de Horário',
+    fastOfHours: 'Jejum de',
+    whenStarts: 'Quando começa',
     noData: 'Nenhum jejum neste dia.',
     swipeHint: '← Voltar para o app',
     recentFasts: 'Últimos jejums',
@@ -269,6 +271,8 @@ const texts = {
     totalAll: 'Total overall',
     close: 'Close',
     timeSimulatorTitle: 'Time Simulator',
+    fastOfHours: 'Fast of',
+    whenStarts: 'When it starts',
     noData: 'No fast on this day.',
     swipeHint: '← Back to app',
     recentFasts: 'Recent fasts',
@@ -296,8 +300,8 @@ function getStartTimestampFromTime(timeStr: string, dateStr?: string): number {
     d = new Date(y, mo - 1, day, h, m ?? 0, 0, 0);
   } else {
     d = new Date();
-    d.setHours(h, m ?? 0, 0, 0);
-    if (d.getTime() > Date.now()) d.setDate(d.getDate() - 1);
+  d.setHours(h, m ?? 0, 0, 0);
+  if (d.getTime() > Date.now()) d.setDate(d.getDate() - 1);
   }
   return d.getTime();
 }
@@ -400,14 +404,21 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
     if (cycle !== 'custom') {
       const opt = CYCLES.find((x) => x.id === cycle);
       if (opt) setEndTime(suggestedEndTime(v, opt.hours));
+    } else {
+      setEndTime(suggestedEndTime(v, customHours));
     }
+  };
+
+  const handleCustomHoursChange = (v: number) => {
+    setCustomHours(v);
+    setEndTime(suggestedEndTime(startTime, v));
   };
 
   const computedHours =
     cycle === 'custom' ? customHours : hoursBetween(startTime, endTime);
 
   const handleOpenStartModal = () => {
-    const d = new Date();
+      const d = new Date();
     setPastStartTime(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
     setPastStartDate(dateToKey(d));
     setShowDayList(false);
@@ -418,7 +429,7 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
   const handleStartWithTime = (startTimestamp: number) => {
     const plannedHours =
       cycle === 'custom'
-        ? customHours
+      ? customHours
         : CYCLES.find((c) => c.id === cycle)?.hours ?? hoursBetween(startTime, endTime);
     const data: CurrentFast = { startTimestamp, plannedHours, cycle };
     setCurrentFast(userId, data);
@@ -583,7 +594,7 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
           endTime={endTime}
           onEndTimeChange={setEndTime}
           customHours={customHours}
-          onCustomHoursChange={setCustomHours}
+          onCustomHoursChange={handleCustomHoursChange}
           computedHours={computedHours}
           currentFast={currentFast}
           onCycleChangeActive={handleChangeCycle}
@@ -594,7 +605,7 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
           expectedEndStr={expectedEndStr}
           isDark={isDark}
           lang={lang}
-          t={{ cycle: t.cycle, start: t.start, end: t.end, hours: t.hours, expectedEnd: t.expectedEnd, changeCycle: t.changeCycle, apply: t.apply, timeSimulatorTitle: t.timeSimulatorTitle }}
+          t={{ cycle: t.cycle, start: t.start, end: t.end, hours: t.hours, expectedEnd: t.expectedEnd, changeCycle: t.changeCycle, apply: t.apply, timeSimulatorTitle: t.timeSimulatorTitle, fastOfHours: t.fastOfHours, whenStarts: t.whenStarts }}
         />
       </div>
 
