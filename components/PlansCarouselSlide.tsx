@@ -282,8 +282,10 @@ const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
                   ) : (
                     <>
                       <Zap size={featured ? 20 : 18} />
-                      {t.cta} – R$ {(plan.totalPrice / (plan.durationMonths === 12 ? 365 : plan.durationMonths * 30)).toFixed(2).replace('.', ',')}
-                      {t.perDay}
+                      {featured
+                        ? `${t.cta} – R$ ${(plan.totalPrice / 365).toFixed(2).replace('.', ',')}${t.perDay}`
+                        : `${t.cta} – R$ ${plan.totalPrice.toFixed(2).replace('.', ',')}`
+                      }
                     </>
                   )}
                 </button>
