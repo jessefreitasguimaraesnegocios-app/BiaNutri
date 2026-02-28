@@ -12,7 +12,7 @@ const CYCLES: { id: FastingCycle; label: string; shortLabel: string; hours: numb
   { id: '16', label: '16h', shortLabel: '16:8', hours: 16, hintPt: 'Mais comum', hintEn: 'Most common' },
   { id: '18', label: '18h', shortLabel: '18:6', hours: 18, hintPt: 'Intermediário', hintEn: 'Intermediate' },
   { id: '20', label: '20h', shortLabel: '20:4', hours: 20, hintPt: 'Avançado', hintEn: 'Advanced' },
-  { id: 'custom', label: 'Personalizado', shortLabel: 'Custom', hours: 0, hintPt: 'Defina as horas', hintEn: 'Set hours' },
+  { id: 'custom', label: 'Personalizado', shortLabel: 'Personalizado', hours: 0, hintPt: 'Defina as horas', hintEn: 'Set hours' },
 ];
 
 interface FastingCyclePickerProps {

@@ -197,7 +197,7 @@ const texts = {
   pt: {
     title: 'Jejum',
     subtitle: 'Defina início e fim e acompanhe seus ciclos.',
-    cycle: 'Ciclo',
+    cycle: 'Protocolo',
     start: 'Início',
     end: 'Fim',
     hours: 'horas',
@@ -245,7 +245,7 @@ const texts = {
   en: {
     title: 'Fasting',
     subtitle: 'Set start and end time and track your cycles.',
-    cycle: 'Cycle',
+    cycle: 'Protocol',
     start: 'Start',
     end: 'End',
     hours: 'hours',
@@ -690,10 +690,14 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
                     const dayOptions: { dateKey: string; label: string }[] = [];
                     for (let i = 0; i < 7; i++) {
                       const d = new Date();
+                      d.setHours(12, 0, 0, 0);
                       d.setDate(d.getDate() - i);
                       const dateKey = dateToKey(d);
                       const weekday = d.toLocaleDateString(lang === 'pt' ? 'pt-BR' : 'en-US', { weekday: 'long' });
-                      const label = i === 0 ? t.today : weekday.charAt(0).toUpperCase() + weekday.slice(1);
+                      const dayMonth = d.toLocaleDateString(lang === 'pt' ? 'pt-BR' : 'en-US', { day: '2-digit', month: '2-digit' });
+                      const label = i === 0
+                        ? `${t.today} (${dayMonth})`
+                        : `${weekday.charAt(0).toUpperCase() + weekday.slice(1)} (${dayMonth})`;
                       dayOptions.push({ dateKey, label });
                     }
                     const selectedLabel = dayOptions.find((o) => o.dateKey === pastStartDate)?.label ?? pastStartDate;
