@@ -28,3 +28,16 @@
 .animate-featured-plan-glow {
   animation: featured-plan-glow 2.5s ease-in-out infinite;
 }
+
+/* Borda verde pulsante nas fases de jejum quando a marca é atingida */
+@keyframes ring-pulse-green {
+  0%, 100% {
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.65);
+  }
+  50% {
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 1);
+  }
+}
+.fasting-phase-green-border {
+  animation: ring-pulse-green 2s ease-in-out infinite;
+}

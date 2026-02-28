@@ -26,6 +26,10 @@ module.exports = {
           '0%, 100%': { opacity: '1', transform: 'scale(1)' },
           '50%': { opacity: '0.85', transform: 'scale(1.02)' },
         },
+        ringPulseGreen: {
+          '0%, 100%': { boxShadow: '0 0 0 2px rgba(34, 197, 94, 0.7)' },
+          '50%': { boxShadow: '0 0 0 2px rgba(34, 197, 94, 1)' },
+        },
         gradientRotate: {
           '0%': { transform: 'rotate(0deg)' },
           '100%': { transform: 'rotate(360deg)' },
@@ -38,6 +42,7 @@ module.exports = {
       },
       animation: {
         'pulse-ring': 'pulseRing 2.5s ease-in-out infinite',
+        'ring-pulse-green': 'ringPulseGreen 2s ease-in-out infinite',
         'gradient-rotate': 'gradientRotate 8s linear infinite',
         'goal-celebrate': 'celebrate 0.5s ease-out forwards',
       },

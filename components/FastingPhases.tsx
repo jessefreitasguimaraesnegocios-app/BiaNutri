@@ -64,14 +64,14 @@ const FastingPhases: React.FC<FastingPhasesProps> = ({ elapsedSeconds, isDark, l
               rounded-2xl p-3 sm:p-4 flex flex-col items-center text-center transition-all duration-500
               ${isActive
                 ? isDark
-                  ? 'bg-slate-700/80 ring-1 ring-brand-500/30'
-                  : 'bg-white dark:bg-slate-800 shadow-md ring-1 ring-brand-200 dark:ring-brand-500/20'
+                  ? 'bg-slate-700/80 fasting-phase-green-border'
+                  : 'bg-white dark:bg-slate-800 shadow-md fasting-phase-green-border'
                 : isDark
-                  ? 'bg-slate-800/50'
-                  : 'bg-slate-100 dark:bg-slate-800/50'
+                  ? 'bg-slate-800/50 ring-1 ring-slate-600/50'
+                  : 'bg-slate-100 dark:bg-slate-800/50 ring-1 ring-slate-200 dark:ring-slate-600/50'
               }
             `}
-            style={{ animationDelay: `${index * 80}ms` }}
+            style={isActive ? { animationDelay: '0ms' } : { animationDelay: `${index * 80}ms` }}
           >
             <phase.Icon
               size={28}
