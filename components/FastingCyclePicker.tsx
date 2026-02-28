@@ -212,7 +212,7 @@ const FastingCyclePicker: React.FC<FastingCyclePickerProps> = ({
             </label>
             <div className="flex flex-col gap-2 w-full max-w-[200px]">
               <div
-                className={`flex items-center justify-center py-2 rounded-xl font-mono text-2xl font-bold ${isDark ? 'bg-slate-700/80 text-white' : 'bg-slate-200/80 text-slate-900'}`}
+                className={`flex items-center justify-center py-2 rounded-xl font-mono text-xl font-bold ${isDark ? 'bg-slate-700/80 text-white' : 'bg-slate-200/80 text-slate-900'}`}
                 aria-live="polite"
               >
                 {simulatorHours} {t.hours}
