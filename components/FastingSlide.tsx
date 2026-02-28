@@ -225,6 +225,10 @@ const texts = {
     noData: 'Nenhum jejum neste dia.',
     swipeHint: '← Voltar para o app',
     recentFasts: 'Últimos jejums',
+    deleteConfirmTitle: 'Excluir jejum?',
+    deleteConfirmMessage: 'Esta ação não pode ser desfeita.',
+    deleteConfirmCancel: 'Cancelar',
+    deleteConfirmDelete: 'Excluir',
     lastDays: 'Últimos 14 dias',
     expectedEnd: 'Horário final esperado',
     today: 'Hoje',
@@ -266,6 +270,10 @@ const texts = {
     noData: 'No fast on this day.',
     swipeHint: '← Back to app',
     recentFasts: 'Recent fasts',
+    deleteConfirmTitle: 'Delete fast?',
+    deleteConfirmMessage: 'This action cannot be undone.',
+    deleteConfirmCancel: 'Cancel',
+    deleteConfirmDelete: 'Delete',
     lastDays: 'Last 14 days',
     expectedEnd: 'Expected end time',
     today: 'Today',
@@ -334,6 +342,7 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
   const [currentFast, setCurrentFastState] = useState<CurrentFast | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [selectedEntry, setSelectedEntry] = useState<FastingEntry | null>(null);
+  const [entryToDelete, setEntryToDelete] = useState<FastingEntry | null>(null);
   const [showStartTimeModal, setShowStartTimeModal] = useState(false);
   const [startTimeChoice, setStartTimeChoice] = useState<'now' | 'past'>('now');
   const [pastStartTime, setPastStartTime] = useState(() => {
@@ -394,21 +403,6 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
 
   const computedHours =
     cycle === 'custom' ? customHours : hoursBetween(startTime, endTime);
-
-  const handleRegister = () => {
-    const today = dateToKey(new Date());
-    const finalEnd = cycle === 'custom' ? suggestedEndTime(startTime, customHours) : endTime;
-    const finalHours = cycle === 'custom' ? customHours : hoursBetween(startTime, endTime);
-    const entry: FastingEntry = {
-      date: today,
-      startTime,
-      endTime: finalEnd,
-      hours: finalHours,
-      cycle,
-    };
-    saveFastingEntry(userId, entry);
-    setEntries(getFastingEntries(userId));
-  };
 
   const handleOpenStartModal = () => {
     const d = new Date();
@@ -602,18 +596,9 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
         />
       </div>
 
-      {/* Quando não há jejum: botão Registrar + Calendário (Iniciar fica só no centro do anel) */}
+      {/* Quando não há jejum: Calendário (Iniciar fica no centro do anel) */}
       {!currentFast && (
         <>
-          <div className="flex flex-col gap-2 animate-in fade-in duration-500" style={{ animationDelay: '250ms' }}>
-            <button
-              onClick={handleRegister}
-              className="w-full py-3 rounded-2xl font-bold border-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-            >
-              {t.register}
-            </button>
-          </div>
-
           <FastingCalendar
             entries={entries}
             selectedDate={selectedEntry?.date ?? null}
@@ -621,9 +606,7 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
             onCloseDayModal={() => setSelectedEntry(null)}
             onSelectEntry={handleSelectEntry}
             onDeleteEntry={(entry) => {
-              removeFastingEntry(userId, entry.date);
-              setEntries(getFastingEntries(userId));
-              if (selectedEntry?.date === entry.date) setSelectedEntry(null);
+              setEntryToDelete(entry);
             }}
             totalForWeek={totalForWeek}
             totalForMonth={totalForMonth}
@@ -782,6 +765,37 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
               >
                 <Play size={18} fill="currentColor" />
                 {t.confirmStart}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: confirmar exclusão de jejum */}
+      {entryToDelete && (
+        <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className={`w-full max-w-sm rounded-2xl p-6 shadow-xl ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
+            <p className={`font-bold text-lg mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>{t.deleteConfirmTitle}</p>
+            <p className={`text-sm mb-4 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{t.deleteConfirmMessage}</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setEntryToDelete(null)}
+                className="flex-1 py-3 rounded-xl font-bold border-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200"
+              >
+                {t.deleteConfirmCancel}
+              </button>
+              <button
+                onClick={() => {
+                  if (entryToDelete) {
+                    removeFastingEntry(userId, entryToDelete.date);
+                    setEntries(getFastingEntries(userId));
+                    if (selectedEntry?.date === entryToDelete.date) setSelectedEntry(null);
+                    setEntryToDelete(null);
+                  }
+                }}
+                className="flex-1 py-3 rounded-xl font-bold bg-red-500 text-white hover:bg-red-600"
+              >
+                {t.deleteConfirmDelete}
               </button>
             </div>
           </div>
