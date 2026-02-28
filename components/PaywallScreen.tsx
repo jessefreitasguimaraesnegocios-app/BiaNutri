@@ -47,6 +47,7 @@ const paywallTexts = {
     perDay: '/dia',
     total: 'total',
     bestValue: 'Melhor custo-benefício',
+    promotion: 'Promoção',
     popular: 'Mais popular',
     cta: 'Assinar',
     benefits: [
@@ -67,6 +68,7 @@ const paywallTexts = {
     perDay: '/day',
     total: 'total',
     bestValue: 'Best value',
+    promotion: 'Promotion',
     popular: 'Most popular',
     cta: 'Subscribe',
     benefits: [
@@ -241,13 +243,18 @@ const PaywallScreen: React.FC<PaywallScreenProps> = ({
                     {t.bestValue}
                   </div>
                 )}
-                <div className="p-5">
+                <div className={featured ? 'p-6' : 'p-5'}>
+                  {featured && (
+                    <p className="text-center font-bold text-xl text-brand-700 dark:text-brand-300 mb-2 animate-promotion-pulse">
+                      {t.promotion}
+                    </p>
+                  )}
                   {(() => {
                     return (
                       <>
                         <div className="flex items-baseline justify-between gap-2 mb-1">
                           <span
-                            className={`font-bold ${
+                            className={`font-bold ${featured ? 'text-lg' : ''} ${featured ? 'animate-promotion-pulse' : ''} ${
                               featured ? 'text-brand-700 dark:text-brand-300' : isDark ? 'text-white' : 'text-slate-900'
                             }`}
                           >
