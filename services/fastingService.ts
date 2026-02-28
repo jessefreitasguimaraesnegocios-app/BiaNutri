@@ -44,8 +44,8 @@ export function saveFastingEntry(userId: string, entry: FastingEntry): void {
   localStorage.setItem(STORAGE_KEY(userId), JSON.stringify([...without, entry]));
 }
 
-/** Remove a marcação de jejum do dia (excluir registro). */
-export function deleteFastingEntry(userId: string, dateStr: string): void {
+/** Remove o registro de jejum do dia informado. */
+export function removeFastingEntry(userId: string, dateStr: string): void {
   const entries = getFastingEntries(userId).filter((e) => e.date !== dateStr);
   localStorage.setItem(STORAGE_KEY(userId), JSON.stringify(entries));
 }

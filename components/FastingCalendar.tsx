@@ -12,7 +12,7 @@ interface FastingCalendarProps {
   selectedEntry: FastingEntry | null;
   onCloseDayModal: () => void;
   onSelectEntry: (entry: FastingEntry) => void;
-  onDeleteEntry?: (entry: FastingEntry) => void;
+  onDeleteEntry: (entry: FastingEntry) => void;
   totalForWeek: (dateStr: string) => number;
   totalForMonth: (dateStr: string) => number;
   totalAll: number;
@@ -28,7 +28,6 @@ interface FastingCalendarProps {
     noData: string;
     recentFasts: string;
     lastDays: string;
-    deleteEntry: string;
   };
 }
 
@@ -177,10 +176,9 @@ const FastingCalendar: React.FC<FastingCalendarProps> = ({
             {recentFasts.map((entry) => {
               const isSelected = selectedEntry?.date === entry.date;
               return (
-                <button
+                <div
                   key={entry.date}
-                  onClick={() => onSelectEntry(entry)}
-                  className={`w-full rounded-xl p-4 text-left flex items-center justify-between gap-3 transition-all hover:scale-[1.01] active:scale-100 ${
+                  className={`w-full rounded-xl p-4 flex items-center justify-between gap-3 transition-all ${
                     isSelected
                       ? 'bg-brand-500/30 dark:bg-brand-500/20 ring-2 ring-brand-500'
                       : isDark
@@ -188,7 +186,11 @@ const FastingCalendar: React.FC<FastingCalendarProps> = ({
                       : 'bg-white dark:bg-slate-700/80 hover:bg-slate-200 dark:hover:bg-slate-700 shadow-sm'
                   }`}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => onSelectEntry(entry)}
+                    className="flex-1 flex items-center gap-3 min-w-0 text-left hover:opacity-90 active:opacity-80"
+                  >
                     <div
                       className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${
                         isDark ? 'bg-brand-500/30' : 'bg-brand-100 dark:bg-brand-500/20'
@@ -204,11 +206,22 @@ const FastingCalendar: React.FC<FastingCalendarProps> = ({
                         {entry.startTime} → {entry.endTime}
                       </p>
                     </div>
-                  </div>
+                  </button>
                   <span className="flex-shrink-0 font-mono font-bold text-brand-500">
                     {entry.hours.toFixed(1)}h
                   </span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteEntry(entry);
+                    }}
+                    className="flex-shrink-0 p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 dark:hover:bg-red-500/20 transition-colors"
+                    title={lang === 'pt' ? 'Excluir jejum' : 'Delete fast'}
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -256,18 +269,6 @@ const FastingCalendar: React.FC<FastingCalendarProps> = ({
                 </p>
               </div>
             </div>
-            {onDeleteEntry && (
-              <button
-                onClick={() => {
-                  onDeleteEntry(selectedEntry);
-                  onCloseDayModal();
-                }}
-                className="w-full mt-3 py-3 rounded-xl font-bold bg-red-500/20 dark:bg-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-500/30 dark:hover:bg-red-500/30 border border-red-500/50 flex items-center justify-center gap-2 transition-colors"
-              >
-                <Trash2 size={18} />
-                {t.deleteEntry}
-              </button>
-            )}
             <button
               onClick={onCloseDayModal}
               className="w-full mt-4 py-3 rounded-xl font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
