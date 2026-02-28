@@ -173,7 +173,7 @@ const FastingCyclePicker: React.FC<FastingCyclePickerProps> = ({
 
   return (
     <div className="space-y-4">
-      <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block text-center">{t.cycle}</label>
+      <label className="text-sm font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400 block text-center">{t.cycle}</label>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {CYCLES.map((c) => (
           <button
