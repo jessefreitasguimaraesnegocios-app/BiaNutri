@@ -49,6 +49,7 @@ interface FastingCyclePickerProps {
     timeSimulatorTitle?: string;
     fastOfHours?: string;
     whenStarts?: string;
+    customCycle?: string;
   };
 }
 
@@ -141,7 +142,7 @@ const FastingCyclePicker: React.FC<FastingCyclePickerProps> = ({
                   }
                 `}
               >
-                {c.label}
+                {c.id === 'custom' ? (t.customCycle ?? c.label) : c.label}
               </button>
             ))}
           </div>
@@ -192,7 +193,7 @@ const FastingCyclePicker: React.FC<FastingCyclePickerProps> = ({
           >
             <Clock size={20} className={cycle === c.id ? 'text-brand-500' : isDark ? 'text-slate-400' : 'text-slate-500'} />
             <span className={`font-bold mt-1 ${cycle === c.id ? 'text-brand-600 dark:text-brand-400' : isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-              {c.shortLabel}
+              {c.id === 'custom' ? (t.customCycle ?? c.shortLabel) : c.shortLabel}
             </span>
             <span className="text-[10px] mt-0.5 text-slate-500">{hint(c.hintPt, c.hintEn)}</span>
           </button>

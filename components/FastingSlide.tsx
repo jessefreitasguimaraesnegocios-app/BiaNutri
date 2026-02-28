@@ -237,6 +237,7 @@ const texts = {
     today: 'Hoje',
     tomorrow: 'Amanhã',
     changeCycle: 'Trocar ciclo',
+    customCycle: 'Personalizado',
     apply: 'Aplicar',
     endTimeChoice: 'Quando você encerrou o jejum?',
     endedAt: 'Encerrei às',
@@ -285,6 +286,7 @@ const texts = {
     today: 'Today',
     tomorrow: 'Tomorrow',
     changeCycle: 'Change cycle',
+    customCycle: 'Custom',
     apply: 'Apply',
     endTimeChoice: 'When did you end the fast?',
     endedAt: 'I ended at',
@@ -622,7 +624,7 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
           expectedEndStr={expectedEndStr}
           isDark={isDark}
           lang={lang}
-          t={{ cycle: t.cycle, start: t.start, end: t.end, hours: t.hours, expectedEnd: t.expectedEnd, changeCycle: t.changeCycle, apply: t.apply, timeSimulatorTitle: t.timeSimulatorTitle, fastOfHours: t.fastOfHours, whenStarts: t.whenStarts }}
+          t={{ cycle: t.cycle, start: t.start, end: t.end, hours: t.hours, expectedEnd: t.expectedEnd, changeCycle: t.changeCycle, customCycle: t.customCycle, apply: t.apply, timeSimulatorTitle: t.timeSimulatorTitle, fastOfHours: t.fastOfHours, whenStarts: t.whenStarts }}
         />
       </div>
 
