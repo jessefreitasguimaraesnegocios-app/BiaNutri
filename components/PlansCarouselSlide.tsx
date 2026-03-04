@@ -36,7 +36,6 @@ const texts = {
     trialMin: 'min',
     trialYouHave: 'Você tem 30 min de teste grátis',
     trialEnded: 'Trial encerrado — assine para continuar',
-    notSubscriberYet: 'Você ainda não é assinante. O que está esperando!?',
     verifySubscription: 'Verificar assinatura',
     verifying: 'Verificando...',
     yourSubscription: 'Sua assinatura',
@@ -64,7 +63,6 @@ const texts = {
     trialMin: 'min',
     trialYouHave: 'You have 30 min free trial',
     trialEnded: 'Trial ended — subscribe to continue',
-    notSubscriberYet: "You're not a subscriber yet. What are you waiting for!?",
     verifySubscription: 'Verify subscription',
     verifying: 'Verifying...',
     yourSubscription: 'Your subscription',
@@ -205,12 +203,6 @@ const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
               />
             </div>
           )}
-        </div>
-      )}
-
-      {showTrialSection && (
-        <div className="rounded-xl p-4 text-center font-semibold text-sm bg-amber-500/20 text-amber-800 dark:text-amber-200 border border-amber-500/40">
-          {t.notSubscriberYet}
         </div>
       )}
 
