@@ -1,6 +1,17 @@
 import React from 'react';
-import { Play } from 'lucide-react';
+import { Play, Flame, Zap, Sparkles } from 'lucide-react';
 import type { CurrentFast } from '../services/fastingService';
+
+/** Mesmos limites das fases do FastingPhases (em segundos) */
+const PHASE_GLUCOSE = 0;
+const PHASE_FAT = 12 * 3600;
+const PHASE_AUTOPHAGY = 16 * 3600;
+
+const RING_ICONS = [
+  { threshold: PHASE_GLUCOSE, Icon: Zap, colorActive: 'text-amber-500', colorInactive: 'text-slate-400 dark:text-slate-500' },
+  { threshold: PHASE_FAT, Icon: Flame, colorActive: 'text-orange-500', colorInactive: 'text-slate-400 dark:text-slate-500' },
+  { threshold: PHASE_AUTOPHAGY, Icon: Sparkles, colorActive: 'text-purple-500', colorInactive: 'text-slate-400 dark:text-slate-500' },
+];
 
 function formatElapsed(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -35,6 +46,17 @@ const BUTTON_SIZE = INNER_DIAMETER - 8; // botão ocupa quase toda a circunferê
 const CX = SIZE / 2;
 const CY = SIZE / 2;
 const CIRCUMFERENCE = 2 * Math.PI * R;
+const ICON_RADIUS = R + 14;
+const ICON_SIZE = 20;
+
+function angleToXY(progressFrom0To1: number): { x: number; y: number } {
+  const angleDeg = progressFrom0To1 * 360;
+  const rad = ((angleDeg - 90) * Math.PI) / 180;
+  return {
+    x: CX + ICON_RADIUS * Math.cos(rad),
+    y: CY + ICON_RADIUS * Math.sin(rad),
+  };
+}
 
 const FastingTimerRing: React.FC<FastingTimerRingProps> = ({
   currentFast,
@@ -55,6 +77,8 @@ const FastingTimerRing: React.FC<FastingTimerRingProps> = ({
   const remainingMins = Math.floor((remainingSeconds % 3600) / 60);
 
   const dashOffset = CIRCUMFERENCE * (1 - progress);
+
+  const plannedSecondsForPhases = currentFast ? currentFast.plannedHours * 3600 : 16 * 3600;
 
   return (
     <div
@@ -99,6 +123,33 @@ const FastingTimerRing: React.FC<FastingTimerRingProps> = ({
           className="transition-[stroke-dashoffset] duration-1000 ease-out"
         />
       </svg>
+      {/* Ícones das fases no anel (fora do SVG para Tailwind); acendem quando o progresso atinge a meta */}
+      {isActive && (
+        <div className="absolute inset-0 pointer-events-none" style={{ width: SIZE, height: SIZE }}>
+          {RING_ICONS.filter(({ threshold }) => threshold <= plannedSecondsForPhases).map(({ threshold, Icon, colorActive, colorInactive }) => {
+            let phaseProgress = Math.min(1, threshold / plannedSecondsForPhases);
+            if (phaseProgress >= 0.95 && phaseProgress <= 1) {
+              phaseProgress = 0.97;
+            }
+            const { x, y } = angleToXY(phaseProgress);
+            const isPhaseReached = elapsedSeconds >= threshold;
+            return (
+              <div
+                key={threshold}
+                className="absolute flex items-center justify-center transition-colors duration-300"
+                style={{
+                  width: ICON_SIZE,
+                  height: ICON_SIZE,
+                  left: x - ICON_SIZE / 2,
+                  top: y - ICON_SIZE / 2,
+                }}
+              >
+                <Icon size={ICON_SIZE} className={isPhaseReached ? colorActive : colorInactive} />
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Center content */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">

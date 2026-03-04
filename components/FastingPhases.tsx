@@ -49,12 +49,18 @@ interface FastingPhasesProps {
   elapsedSeconds: number;
   isDark: boolean;
   lang: 'pt' | 'en';
+  /** Duração planejada em segundos; fases além disso (ex.: autofagia 16h) não são exibidas */
+  plannedSeconds?: number;
 }
 
-const FastingPhases: React.FC<FastingPhasesProps> = ({ elapsedSeconds, isDark, lang }) => {
+const FastingPhases: React.FC<FastingPhasesProps> = ({ elapsedSeconds, isDark, lang, plannedSeconds }) => {
+  const phasesToShow = plannedSeconds != null
+    ? PHASES.filter((p) => p.thresholdSeconds <= plannedSeconds)
+    : PHASES;
+  const colClass = phasesToShow.length === 2 ? 'grid-cols-2' : 'grid-cols-3';
   return (
-    <div className="grid grid-cols-3 gap-2 sm:gap-3">
-      {PHASES.map((phase, index) => {
+    <div className={`grid gap-2 sm:gap-3 ${colClass}`}>
+      {phasesToShow.map((phase, index) => {
         const isActive = elapsedSeconds >= phase.thresholdSeconds;
         const label = lang === 'pt' ? phase.labelPt : phase.labelEn;
         return (

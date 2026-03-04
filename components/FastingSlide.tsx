@@ -572,7 +572,12 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
       {/* Fases do corpo (só quando jejum ativo) */}
       {currentFast && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '100ms' }}>
-          <FastingPhases elapsedSeconds={elapsedSeconds} isDark={isDark} lang={lang} />
+          <FastingPhases
+            elapsedSeconds={elapsedSeconds}
+            isDark={isDark}
+            lang={lang}
+            plannedSeconds={currentFast.plannedHours * 3600}
+          />
         </div>
       )}
 
