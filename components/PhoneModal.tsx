@@ -3,6 +3,23 @@ import { Smartphone, Loader2, ArrowRight, LogOut } from 'lucide-react';
 import { setPhone as savePhone, checkPhoneAlreadyUsed, normalizePhone } from '../services/subscriptionService';
 import { TRIAL_MINUTES } from '../constants/plans';
 
+/** Aplica máscara BR: (XX) XXXXX-XXXX celular ou (XX) XXXX-XXXX fixo */
+function formatPhoneMask(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 2) {
+    return digits.length === 0 ? '' : digits.length === 1 ? `(${digits}` : `(${digits})`;
+  }
+  const ddd = digits.slice(0, 2);
+  const rest = digits.slice(2);
+  const isMobile = rest[0] === '9';
+  if (isMobile) {
+    if (rest.length <= 5) return `(${ddd}) ${rest}`;
+    return `(${ddd}) ${rest.slice(0, 5)}-${rest.slice(5)}`;
+  }
+  if (rest.length <= 4) return `(${ddd}) ${rest}`;
+  return `(${ddd}) ${rest.slice(0, 4)}-${rest.slice(4)}`;
+}
+
 interface PhoneModalProps {
   isOpen: boolean;
   userId: string;
@@ -16,7 +33,7 @@ const getTexts = (trialMinutes: number) => ({
   pt: {
     title: 'Quase lá!',
     subtitle: `Informe seu número de telefone para começar seu período de teste de ${trialMinutes} minutos.`,
-    placeholder: '(11) 99999-9999',
+    placeholder: '(31) 99999-9999',
     label: 'Telefone (com DDD)',
     button: 'Continuar',
     backToLogin: 'Voltar ao login',
@@ -27,7 +44,7 @@ const getTexts = (trialMinutes: number) => ({
   en: {
     title: 'Almost there!',
     subtitle: `Enter your phone number to start your ${trialMinutes}-minute free trial.`,
-    placeholder: '(11) 99999-9999',
+    placeholder: '(31) 99999-9999',
     label: 'Phone (with area code)',
     button: 'Continue',
     backToLogin: 'Back to login',
@@ -138,8 +155,10 @@ const PhoneModal: React.FC<PhoneModalProps> = ({
                 />
                 <input
                   type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => setPhone(formatPhoneMask(e.target.value))}
                   placeholder={t.placeholder}
                   className={`w-full pl-10 pr-4 py-3 rounded-xl border ${
                     theme === 'dark'

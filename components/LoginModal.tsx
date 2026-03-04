@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { X, Mail, Lock, LogIn, UserPlus, Eye, EyeOff } from 'lucide-react';
 import { signIn, signUp, resetPasswordForEmail } from '../services/authService';
+
+const EMAIL_DOMAINS = ['gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com', 'icloud.com', 'live.com', 'bol.com.br', 'uol.com.br', 'outlook.com.br'];
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -21,8 +23,48 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSuccess, the
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [forgotSuccess, setForgotSuccess] = useState(false);
+  const [showEmailSuggestions, setShowEmailSuggestions] = useState(false);
+  const [emailSuggestionIndex, setEmailSuggestionIndex] = useState(0);
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
 
-  if (!isOpen) return null;
+  const emailLocalPart = email.includes('@') ? email.split('@')[0] : email;
+  const emailAfterAt = email.includes('@') ? email.split('@')[1] || '' : '';
+  const filteredDomains = EMAIL_DOMAINS.filter((d) =>
+    d.toLowerCase().startsWith(emailAfterAt.toLowerCase())
+  );
+  const showSuggestions = showEmailSuggestions && email.includes('@') && filteredDomains.length > 0;
+
+  useEffect(() => {
+    if (!showSuggestions) setEmailSuggestionIndex(0);
+  }, [showSuggestions, filteredDomains.length]);
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    setShowEmailSuggestions(true);
+  };
+
+  const handleSelectDomain = (domain: string) => {
+    setEmail(`${emailLocalPart}@${domain}`);
+    setShowEmailSuggestions(false);
+    emailInputRef.current?.focus();
+  };
+
+  const handleEmailKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || filteredDomains.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setEmailSuggestionIndex((i) => Math.min(i + 1, filteredDomains.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setEmailSuggestionIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter' && filteredDomains[emailSuggestionIndex]) {
+      e.preventDefault();
+      handleSelectDomain(filteredDomains[emailSuggestionIndex]);
+    } else if (e.key === 'Escape') {
+      setShowEmailSuggestions(false);
+    }
+  };
 
   const texts = {
     pt: {
@@ -272,9 +314,12 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSuccess, the
                     theme === 'dark' ? 'text-slate-400' : 'text-slate-500'
                   }`} size={20} />
                   <input
+                    ref={emailInputRef}
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => handleEmailChange(e.target.value)}
+                    onKeyDown={handleEmailKeyDown}
+                    onBlur={() => setTimeout(() => setShowEmailSuggestions(false), 150)}
                     required
                     className={`w-full pl-10 pr-4 py-3 rounded-xl border ${
                       theme === 'dark'
@@ -283,6 +328,36 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSuccess, the
                     } focus:outline-none focus:ring-2 focus:ring-brand-500`}
                     placeholder={t.email}
                   />
+                  {showSuggestions && (
+                    <div
+                      ref={suggestionsRef}
+                      className={`absolute left-0 right-0 top-full mt-1 py-1 rounded-xl border shadow-lg z-10 max-h-48 overflow-y-auto ${
+                        theme === 'dark'
+                          ? 'bg-slate-700 border-slate-600'
+                          : 'bg-white border-slate-200'
+                      }`}
+                    >
+                      {filteredDomains.map((domain, i) => (
+                        <button
+                          key={domain}
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            handleSelectDomain(domain);
+                          }}
+                          className={`w-full text-left px-4 py-2.5 text-sm ${
+                            i === emailSuggestionIndex
+                              ? 'bg-brand-500/20 text-brand-700 dark:text-brand-300'
+                              : theme === 'dark'
+                              ? 'text-slate-200 hover:bg-slate-600'
+                              : 'text-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          {emailLocalPart}@{domain}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               {error && (
@@ -339,9 +414,12 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSuccess, the
                   theme === 'dark' ? 'text-slate-400' : 'text-slate-500'
                 }`} size={20} />
                 <input
+                  ref={emailInputRef}
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => handleEmailChange(e.target.value)}
+                  onKeyDown={handleEmailKeyDown}
+                  onBlur={() => setTimeout(() => setShowEmailSuggestions(false), 150)}
                   required
                   className={`w-full pl-10 pr-4 py-3 rounded-xl border ${
                     theme === 'dark'
@@ -350,6 +428,36 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSuccess, the
                   } focus:outline-none focus:ring-2 focus:ring-brand-500`}
                   placeholder={t.email}
                 />
+                {showSuggestions && (
+                  <div
+                    ref={suggestionsRef}
+                    className={`absolute left-0 right-0 top-full mt-1 py-1 rounded-xl border shadow-lg z-10 max-h-48 overflow-y-auto ${
+                      theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600'
+                        : 'bg-white border-slate-200'
+                    }`}
+                  >
+                    {filteredDomains.map((domain, i) => (
+                      <button
+                        key={domain}
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          handleSelectDomain(domain);
+                        }}
+                        className={`w-full text-left px-4 py-2.5 text-sm ${
+                          i === emailSuggestionIndex
+                            ? 'bg-brand-500/20 text-brand-700 dark:text-brand-300'
+                            : theme === 'dark'
+                            ? 'text-slate-200 hover:bg-slate-600'
+                            : 'text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        {emailLocalPart}@{domain}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
