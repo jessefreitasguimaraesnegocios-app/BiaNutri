@@ -40,6 +40,13 @@ import { TRIAL_SECONDS_LIMIT, TRIAL_MINUTES } from './constants/plans';
 import { getAvailablePets, PetDefinition } from './utils/petRegistry';
 import { getDietaryAlerts } from './utils/dietaryAlerts';
 
+/** E-mails de admin (acesso total, sem pagamento e sem trial). Configurar em .env como VITE_ADMIN_EMAILS=email1@x.com,email2@y.com */
+const getAdminEmails = (): string[] => {
+  const raw = import.meta.env.VITE_ADMIN_EMAILS;
+  if (!raw || typeof raw !== 'string') return [];
+  return raw.split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
+};
+
 function App() {
   // Logic to load pets (Get fresh list every render to handle dev HMR updates)
   const availablePets = getAvailablePets();
@@ -189,6 +196,18 @@ function App() {
     (async () => {
       setIsCheckingAccess(true);
       try {
+        const adminEmails = getAdminEmails();
+        const currentSession = await getSession();
+        const userEmail = currentSession?.user?.email?.trim().toLowerCase();
+        if (userEmail && adminEmails.length > 0 && adminEmails.includes(userEmail)) {
+          if (!cancelled) {
+            setAccessStatus('allowed');
+            setHasSubscription(true);
+            setTrialDisplayRemainingSeconds(0);
+            setIsCheckingAccess(false);
+          }
+          return;
+        }
         if (didReturnFromPayment) {
           await syncSubscriptionFromMP(userId);
           if (cancelled) return;
@@ -1262,6 +1281,15 @@ function App() {
     return 'text-red-500';
   };
 
+  const handleCurrentWeightInputChange = (raw: string) => {
+    const digits = (raw.replace(/[^\d]/g, '')).slice(0, 4);
+    if (digits.length <= 2) {
+      setCurrentWeightInput(digits);
+      return;
+    }
+    setCurrentWeightInput(`${digits.slice(0, 2)}.${digits.slice(2)}`);
+  };
+
   const handleSaveCurrentWeight = () => {
     if (!currentWeightInput || isNaN(parseFloat(currentWeightInput)) || !userId) return;
     
@@ -1455,7 +1483,7 @@ function App() {
                 </div>
                 <div className="flex justify-between items-end">
                   <div>
-                    <span className="text-2xl font-bold text-blue-900 dark:text-blue-300">{userStats.initialWeight.toFixed(1)} kg</span>
+                    <span className="text-2xl font-bold text-blue-900 dark:text-blue-300">{userStats.initialWeight.toFixed(2)} kg</span>
                   </div>
                   <div className="text-xs text-blue-600 dark:text-blue-400">
                     {new Date(userStats.initialWeightDate).toLocaleDateString(
@@ -1475,10 +1503,10 @@ function App() {
                 </div>
                 <div className="flex justify-between items-end">
                   <div>
-                    <span className="text-2xl font-bold text-green-900 dark:text-green-300">{userStats.currentWeight.toFixed(1)} kg</span>
+                    <span className="text-2xl font-bold text-green-900 dark:text-green-300">{userStats.currentWeight.toFixed(2)} kg</span>
                     {userStats.initialWeight && (
                       <span className={`text-sm ml-2 ${userStats.currentWeight < userStats.initialWeight ? 'text-green-600 dark:text-green-400' : userStats.currentWeight > userStats.initialWeight ? 'text-red-600 dark:text-red-400' : 'text-slate-600 dark:text-slate-400'}`}>
-                        ({userStats.currentWeight < userStats.initialWeight ? '-' : '+'}{Math.abs(userStats.currentWeight - userStats.initialWeight).toFixed(1)} kg)
+                        ({userStats.currentWeight < userStats.initialWeight ? '-' : '+'}{Math.abs(userStats.currentWeight - userStats.initialWeight).toFixed(2)} kg)
                       </span>
                     )}
                   </div>
@@ -1508,16 +1536,16 @@ function App() {
               <div className="flex gap-2">
                 <input
                   type="number"
-                  step="0.1"
+                  step="0.01"
                   value={currentWeightInput}
-                  onChange={(e) => setCurrentWeightInput(e.target.value)}
-                  placeholder={lang === 'pt' ? 'Ex: 70.5' : 'Ex: 70.5'}
+                  onChange={(e) => handleCurrentWeightInputChange(e.target.value)}
+                  placeholder={lang === 'pt' ? 'Ex: 70.00' : 'Ex: 70.00'}
                   className="flex-1 p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold"
                 />
                 <button
                   onClick={handleSaveCurrentWeight}
                   disabled={!currentWeightInput || isNaN(parseFloat(currentWeightInput))}
-                  className="px-6 bg-brand-500 hover:bg-brand-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-colors"
+                  className="px-6 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-300 disabled:text-slate-500 text-white font-bold rounded-lg transition-colors"
                 >
                   {lang === 'pt' ? 'Salvar' : 'Save'}
                 </button>

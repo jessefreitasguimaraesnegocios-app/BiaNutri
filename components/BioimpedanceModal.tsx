@@ -24,6 +24,10 @@ const DEFAULT_STATS: UserStats = {
 const BioimpedanceModal: React.FC<BioimpedanceModalProps> = ({ isOpen, onClose, lang, texts, onUpdate, userId }) => {
   const [stats, setStats] = useState<UserStats>(DEFAULT_STATS);
   const [showResults, setShowResults] = useState(false);
+  const [heightInput, setHeightInput] = useState('');
+  const [weightInput, setWeightInput] = useState('');
+  const [heightFocused, setHeightFocused] = useState(false);
+  const [weightFocused, setWeightFocused] = useState(false);
 
   const storageKey = userId ? `biaNutriUserStats_${userId}` : null;
 
@@ -42,6 +46,96 @@ const BioimpedanceModal: React.FC<BioimpedanceModalProps> = ({ isOpen, onClose, 
 
   const handleChange = (field: keyof UserStats, value: any) => {
     setStats(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleNumericChange = (field: 'age' | 'height' | 'weight', e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    if (field === 'age') {
+      const digits = raw.replace(/[^\d]/g, '').replace(/^0+(?=\d)/, '').slice(0, 2);
+      const num = digits === '' ? 0 : Number(digits);
+      handleChange(field, num);
+      return;
+    }
+    if (field === 'height') {
+      if (raw.trim() === '') {
+        setHeightInput('');
+        handleChange(field, 0);
+        return;
+      }
+      const normalized = raw.replace(',', '.');
+      const parts = normalized.split('.');
+      const digitsOnly = raw.replace(/[^\d]/g, '');
+      if (parts.length === 1 && digitsOnly.length >= 2 && digitsOnly.length <= 3) {
+        const d = digitsOnly.slice(0, 3).split('').map(Number);
+        const cm = d.length === 1 ? d[0] * 100 : d.length === 2 ? d[0] * 100 + d[1] * 10 : d[0] * 100 + d[1] * 10 + d[2];
+        const disp = cm / 100;
+        setHeightInput(disp.toFixed(2).replace('.', ','));
+        handleChange(field, cm);
+        return;
+      }
+      if (parts.length > 2) return;
+      const before = (parts[0] || '').replace(/[^\d]/g, '').slice(0, 1);
+      const after = (parts[1] || '').replace(/[^\d]/g, '').slice(0, 2);
+      const next = after ? `${before},${after}` : (before ? (normalized.includes('.') || normalized.includes(',') ? `${before},` : before) : '');
+      setHeightInput(next);
+      const cm = before === '' ? 0 : after === '' ? Number(before) * 100 : Number(before) * 100 + Number(after) * (after.length === 1 ? 10 : 1);
+      handleChange(field, Math.round(cm));
+      return;
+    }
+    if (field === 'weight') {
+      if (raw.trim() === '') {
+        setWeightInput('');
+        handleChange(field, 0);
+        return;
+      }
+      const normalized = raw.replace(',', '.');
+      const parts = normalized.split('.');
+      if (parts.length > 2) return;
+      const before = (parts[0] || '').replace(/[^\d]/g, '').replace(/^0+(?=\d)/, '').slice(0, 2);
+      const after = (parts[1] || '').replace(/[^\d]/g, '').slice(0, 2);
+      const hasDecimal = normalized.includes('.') || normalized.includes(',');
+      const next = before === '' ? '' : (hasDecimal ? `${before}.${after}` : before);
+      setWeightInput(next);
+      const num = next === '' ? 0 : parseFloat(next) || 0;
+      handleChange(field, num);
+      return;
+    }
+  };
+
+  const handleHeightBlur = () => {
+    setHeightFocused(false);
+    const v = heightInput.trim().replace(',', '.');
+    if (v === '') {
+      handleChange('height', 0);
+      return;
+    }
+    const parts = v.split('.');
+    const before = (parts[0] || '').replace(/[^\d]/g, '').slice(0, 1);
+    const after = (parts[1] || '').replace(/[^\d]/g, '').slice(0, 2);
+    const cm = before === '' ? 0 : after === '' ? Number(before) * 100 : Number(before) * 100 + (after.length === 1 ? Number(after) * 10 : Number(after));
+    handleChange('height', Math.round(cm));
+  };
+
+  const handleWeightBlur = () => {
+    setWeightFocused(false);
+    const v = weightInput.trim().replace(',', '.');
+    if (v === '') {
+      handleChange('weight', 0);
+      return;
+    }
+    const num = parseFloat(v) || 0;
+    handleChange('weight', num);
+  };
+
+  const heightDisplay = (h: number): string => {
+    if (h === 0) return '';
+    const m = h / 100;
+    return m.toFixed(2).replace('.', ',');
+  };
+
+  const weightDisplay = (w: number): string => {
+    if (w === 0) return '';
+    return w.toFixed(2);
   };
 
   const calculateTarget = () => {
@@ -183,27 +277,41 @@ const BioimpedanceModal: React.FC<BioimpedanceModalProps> = ({ isOpen, onClose, 
                   <label className="text-xs font-bold uppercase text-slate-500">{texts.age}</label>
                   <input 
                     type="number" 
-                    value={stats.age}
-                    onChange={(e) => handleChange('age', Number(e.target.value))}
+                    value={stats.age === 0 ? '' : stats.age}
+                    onChange={(e) => handleNumericChange('age', e)}
+                    placeholder="0"
                     className="w-full p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border-none text-slate-900 dark:text-white font-bold text-center"
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-bold uppercase text-slate-500">{texts.height}</label>
                   <input 
-                    type="number" 
-                    value={stats.height}
-                    onChange={(e) => handleChange('height', Number(e.target.value))}
+                    type="text"
+                    inputMode="decimal"
+                    value={heightFocused ? heightInput : heightDisplay(stats.height)}
+                    onChange={(e) => handleNumericChange('height', e)}
+                    onFocus={() => {
+                      setHeightFocused(true);
+                      setHeightInput(heightDisplay(stats.height) || '');
+                    }}
+                    onBlur={handleHeightBlur}
+                    placeholder="1,70"
                     className="w-full p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border-none text-slate-900 dark:text-white font-bold text-center"
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-bold uppercase text-slate-500">{texts.weight}</label>
                   <input 
-                    type="number"
-                    step="0.1"
-                    value={stats.weight}
-                    onChange={(e) => handleChange('weight', Number(e.target.value) || 0)}
+                    type="text"
+                    inputMode="decimal"
+                    value={weightFocused ? weightInput : weightDisplay(stats.weight)}
+                    onChange={(e) => handleNumericChange('weight', e)}
+                    onFocus={() => {
+                      setWeightFocused(true);
+                      setWeightInput(weightDisplay(stats.weight) || '');
+                    }}
+                    onBlur={handleWeightBlur}
+                    placeholder="70.00"
                     className="w-full p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border-none text-slate-900 dark:text-white font-bold text-center"
                   />
                 </div>
