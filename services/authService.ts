@@ -21,6 +21,16 @@ export const signIn = async (email: string, password: string): Promise<AuthRespo
   };
 };
 
+/** Login com Google (OAuth). Redireciona para o consentimento do Google e volta para a URL atual. */
+export const signInWithGoogle = async (): Promise<{ error: AuthError | null }> => {
+  const redirectTo = `${window.location.origin}${window.location.pathname}`;
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo },
+  });
+  return { error };
+};
+
 // Cadastro com email e senha
 export const signUp = async (email: string, password: string): Promise<AuthResponse> => {
   try {
