@@ -15,9 +15,10 @@ O app React usa o cliente Supabase no navegador. Essas variáveis **precisam ter
 | `VITE_SUPABASE_URL` | Sim | Dashboard Supabase → **Project Settings** → **API** → **Project URL** | URL do projeto (ex.: `https://xxxxx.supabase.co`) |
 | `VITE_SUPABASE_ANON_KEY` | Sim | Dashboard Supabase → **Project Settings** → **API** → **Project API keys** → **anon public** | Chave pública para auth, banco e chamada às Edge Functions |
 | `VITE_MERCADOPAGO_PUBLIC_KEY` | Não* | Mercado Pago → [Credenciais](https://www.mercadopago.com.br/developers/panel/app) → **Chave pública** | Formulário de cartão no app (assinatura via API com `external_reference`). Sem ela, o usuário só pode pagar pelo link do Mercado Pago. |
-| `VITE_ADMIN_EMAILS` | Não | Você define | E-mails que têm acesso de admin: **acesso total sem pagamento e sem trial**. Separados por vírgula (ex.: `admin@email.com,outro@email.com`). |
 
 \* Obrigatória apenas se quiser oferecer **pagamento com cartão dentro do app** (fluxo profissional). Sem ela, o botão "Assinar" abre um modal com opção "Pagar no site do Mercado Pago".
+
+**Admin (acesso total sem pagamento e sem trial):** configurado no **Supabase**, tabela `public.admin_emails`. Adicione uma linha por e-mail (coluna `email`). Quem logar com esse e-mail terá acesso total. Veja migration `004_admin_emails.sql` e Table Editor no Dashboard.
 
 **Exemplo de `.env` na raiz do projeto:**
 
@@ -26,8 +27,6 @@ VITE_SUPABASE_URL=https://lypnxkbbxeagehrqpuoj.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 # Opcional: para pagar com cartão no app
 VITE_MERCADOPAGO_PUBLIC_KEY=APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-# Opcional: e-mails com acesso admin (sem pagamento e sem trial), separados por vírgula
-# VITE_ADMIN_EMAILS=seu-email@exemplo.com
 ```
 
 **Importante:** não coloque a **service_role key** no `.env` do frontend. Ela só deve existir no backend (Edge Functions).

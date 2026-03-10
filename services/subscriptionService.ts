@@ -3,6 +3,7 @@ import type { TrialStatus, AccessStatus } from '../types';
 import { TRIAL_SECONDS_LIMIT } from '../constants/plans';
 
 const TRIAL_FUNCTION = 'trial';
+const CHECK_ADMIN_FUNCTION = 'check-admin';
 const MERCADOPAGO_FUNCTION = 'mercadopago-checkout';
 const MERCADOPAGO_SUBSCRIPTION_FUNCTION = 'mercadopago-subscription';
 const MERCADOPAGO_CANCEL_FUNCTION = 'mercadopago-cancel-subscription';
@@ -113,7 +114,7 @@ async function invokeWithAuth<T = unknown>(
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(body ?? {}),
     });
     const data = (await res.json().catch(() => ({}))) as T & { error?: string; message?: string };
     if (!res.ok) {
@@ -126,6 +127,13 @@ async function invokeWithAuth<T = unknown>(
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro de conexão.' };
   }
+}
+
+/** Verifica se o usuário atual está na tabela admin_emails (acesso total sem pagamento/trial). */
+export async function checkIsAdmin(): Promise<boolean> {
+  const { data, error } = await invokeWithAuth<{ isAdmin?: boolean }>(CHECK_ADMIN_FUNCTION, {});
+  if (error) return false;
+  return !!data?.isAdmin;
 }
 
 /**

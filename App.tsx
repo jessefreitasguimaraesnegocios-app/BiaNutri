@@ -32,6 +32,7 @@ import {
   startTrial,
   getTrialStatus,
   syncSubscriptionFromMP,
+  checkIsAdmin,
 } from './services/subscriptionService';
 import type { AccessStatus } from './types';
 import type { Session } from '@supabase/supabase-js';
@@ -39,13 +40,6 @@ import { TRIAL_SECONDS_LIMIT, TRIAL_MINUTES } from './constants/plans';
 
 import { getAvailablePets, PetDefinition } from './utils/petRegistry';
 import { getDietaryAlerts } from './utils/dietaryAlerts';
-
-/** E-mails de admin (acesso total, sem pagamento e sem trial). Configurar em .env como VITE_ADMIN_EMAILS=email1@x.com,email2@y.com */
-const getAdminEmails = (): string[] => {
-  const raw = import.meta.env.VITE_ADMIN_EMAILS;
-  if (!raw || typeof raw !== 'string') return [];
-  return raw.split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
-};
 
 function App() {
   // Logic to load pets (Get fresh list every render to handle dev HMR updates)
@@ -196,10 +190,8 @@ function App() {
     (async () => {
       setIsCheckingAccess(true);
       try {
-        const adminEmails = getAdminEmails();
-        const currentSession = await getSession();
-        const userEmail = currentSession?.user?.email?.trim().toLowerCase();
-        if (userEmail && adminEmails.length > 0 && adminEmails.includes(userEmail)) {
+        const isAdmin = await checkIsAdmin();
+        if (isAdmin) {
           if (!cancelled) {
             setAccessStatus('allowed');
             setHasSubscription(true);
