@@ -651,6 +651,7 @@ function App() {
         selectedPet={selectedPetId}
         petData={availablePets.find(p => p.id === selectedPetId)}
         onVariantChange={togglePet}
+        lang={lang}
       />
 
       {/* Trackers in Home if goal exists */}

@@ -1,7 +1,80 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import VirtualPetScene from './VirtualPetScene';
 import Avatar3D from './Avatar3D';
 import { PetDefinition } from '../utils/petRegistry';
+
+const PET_TEXTS = {
+    pt: {
+        greetings: [
+            'Olá! Sou seu Pet Virtual.',
+            'E aí, hooman! 🐾',
+            'Tô aqui na moral!',
+            'Bora de dieta saudável?',
+            'Me dá comida que eu te dou moral!',
+            'Sou fofo e sei que sou.',
+            'Cadê o lanche?',
+            'Hoje tem que fechar a meta!',
+            'Tô de boa na lagoa.',
+            'Vamos bater a meta juntos!',
+            'Fome bateu... e aí?',
+            'Só sucesso hoje! 💪',
+        ],
+        lowHealth: 'Estou cansado...',
+        play: ['Yaaay! Brincar!', 'Aeee! Curti!'],
+        playAfter: 'Foi divertido!',
+        eat: ['Nham nham! Delícia!', 'Hmm, top!'],
+        eatAfter: 'Estou cheio!',
+        sleep: 'Zzz... recuperando energia...',
+        sleepAfter: 'Acordei renovado!',
+        scanning: 'Analisando...',
+        error: 'Oops! Erro.',
+        success: 'Incrível!',
+        successAfter: 'Mais alguma coisa?',
+        btnEat: '🍎 Comer',
+        btnPlay: '⚽ Brincar',
+        btnSleep: '💤 Dormir',
+        btnChange: '🔄 Trocar',
+        energy: 'Energia',
+        ariaShowActions: 'Mostrar ações do pet',
+        ariaHideActions: 'Ocultar ações do pet',
+    },
+    en: {
+        greetings: [
+            "Hey! I'm your Virtual Pet.",
+            "What's up, hooman! 🐾",
+            "Just chillin' here!",
+            'Ready for a healthy diet?',
+            'Feed me and we\'re good!',
+            "I'm cute and I know it.",
+            "Where's the snack?",
+            "Let's hit today's goal!",
+            'Just vibing.',
+            "Let's crush this goal together!",
+            "I'm hungry... what's up?",
+            'We got this today! 💪',
+        ],
+        lowHealth: "I'm tired...",
+        play: ['Yaaay! Play time!', 'Woo! So fun!'],
+        playAfter: 'That was fun!',
+        eat: ['Yum yum! So good!', 'Mmm, nice!'],
+        eatAfter: "I'm full!",
+        sleep: 'Zzz... recovering energy...',
+        sleepAfter: 'I woke up refreshed!',
+        scanning: 'Analyzing...',
+        error: 'Oops! Error.',
+        success: 'Amazing!',
+        successAfter: 'Anything else?',
+        btnEat: '🍎 Eat',
+        btnPlay: '⚽ Play',
+        btnSleep: '💤 Sleep',
+        btnChange: '🔄 Change',
+        energy: 'Energy',
+        ariaShowActions: 'Show pet actions',
+        ariaHideActions: 'Hide pet actions',
+    },
+} as const;
+
+type Lang = 'pt' | 'en';
 
 interface CompanionContainerProps {
     isLoading: boolean;
@@ -10,6 +83,7 @@ interface CompanionContainerProps {
     onVariantChange?: () => void;
     selectedPet?: string;
     petData?: PetDefinition;
+    lang?: Lang;
 }
 
 const CompanionContainer: React.FC<CompanionContainerProps> = ({
@@ -18,14 +92,22 @@ const CompanionContainer: React.FC<CompanionContainerProps> = ({
     hasError,
     onVariantChange,
     selectedPet = 'panda_glb',
-    petData
+    petData,
+    lang = 'pt'
 }) => {
     type PetState = 'idle' | 'scanning' | 'success' | 'error' | 'walk' | 'sleep' | 'play' | 'eat' | 'lowHealth';
 
+    const t = PET_TEXTS[lang];
+    const randomGreeting = useMemo(() => t.greetings[Math.floor(Math.random() * t.greetings.length)], [lang]);
+
     const [animationState, setAnimationState] = useState<PetState>('idle');
-    const [message, setMessage] = useState<string>('Olá! Sou seu Pet Virtual.');
+    const [message, setMessage] = useState<string>(randomGreeting);
     const [life, setLife] = useState(100);
     const [showInteractions, setShowInteractions] = useState(false);
+
+    useEffect(() => {
+        setMessage(randomGreeting);
+    }, [lang, randomGreeting]);
 
     // Life Decay System
     useEffect(() => {
@@ -43,19 +125,19 @@ const CompanionContainer: React.FC<CompanionContainerProps> = ({
     useEffect(() => {
         if (life < 20 && animationState === 'idle') {
             setAnimationState("lowHealth");
-            setMessage("Estou cansado...");
+            setMessage(PET_TEXTS[lang].lowHealth);
         }
-    }, [life, animationState]);
+    }, [life, animationState, lang]);
 
     // Actions
     const play = () => {
         if (animationState === 'sleep') return;
         setAnimationState("play");
         setLife(prev => Math.min(prev + 10, 100));
-        setMessage("Yaaay! Brincar!");
+        setMessage(t.play[Math.floor(Math.random() * t.play.length)]);
         setTimeout(() => {
             setAnimationState('idle');
-            setMessage('Foi divertido!');
+            setMessage(t.playAfter);
         }, 3000);
     };
 
@@ -63,16 +145,16 @@ const CompanionContainer: React.FC<CompanionContainerProps> = ({
         if (animationState === 'sleep') return;
         setAnimationState("eat");
         setLife(prev => Math.min(prev + 20, 100));
-        setMessage("Nham nham! Delícia!");
+        setMessage(t.eat[Math.floor(Math.random() * t.eat.length)]);
         setTimeout(() => {
             setAnimationState('idle');
-            setMessage('Estou cheio!');
+            setMessage(t.eatAfter);
         }, 3000);
     };
 
     const sleep = () => {
         setAnimationState("sleep");
-        setMessage("Zzz... recuperando energia...");
+        setMessage(t.sleep);
 
         // Recover health loop
         const recover = setInterval(() => {
@@ -80,7 +162,7 @@ const CompanionContainer: React.FC<CompanionContainerProps> = ({
                 if (prev >= 100) {
                     clearInterval(recover);
                     setAnimationState("idle");
-                    setMessage("Acordei renovado!");
+                    setMessage(t.sleepAfter);
                     return 100;
                 }
                 return Math.min(prev + 2, 100);
@@ -94,19 +176,19 @@ const CompanionContainer: React.FC<CompanionContainerProps> = ({
     useEffect(() => {
         if (isLoading) {
             setAnimationState('scanning');
-            setMessage('Analisando...');
+            setMessage(PET_TEXTS[lang].scanning);
         } else if (hasError) {
             setAnimationState('error');
-            setMessage('Oops! Erro.');
+            setMessage(PET_TEXTS[lang].error);
         } else if (hasResult) {
             setAnimationState('success');
-            setMessage('Incrível!');
+            setMessage(PET_TEXTS[lang].success);
             setTimeout(() => {
                 setAnimationState('idle');
-                setMessage('Mais alguma coisa?');
+                setMessage(PET_TEXTS[lang].successAfter);
             }, 5000);
         }
-    }, [isLoading, hasResult, hasError]);
+    }, [isLoading, hasResult, hasError, lang]);
 
     // Map App State to Animation Name (GLB)
     const getAnimationName = (state: PetState): string => {
@@ -169,7 +251,7 @@ const CompanionContainer: React.FC<CompanionContainerProps> = ({
                 onClick={() => setShowInteractions((s) => !s)}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowInteractions((s) => !s); } }}
                 className="w-full flex-1 min-h-0 flex flex-col items-center cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded-xl"
-                aria-label={showInteractions ? 'Ocultar ações do pet' : 'Mostrar ações do pet'}
+                aria-label={showInteractions ? t.ariaHideActions : t.ariaShowActions}
             >
                 {renderPet()}
             </div>
@@ -181,7 +263,7 @@ const CompanionContainer: React.FC<CompanionContainerProps> = ({
                     style={{ width: `${life}%` }}
                 ></div>
             </div>
-            <p className="text-[10px] text-slate-400 mt-1 font-mono relative z-10">Energia: {Math.floor(life)}%</p>
+            <p className="text-[10px] text-slate-400 mt-1 font-mono relative z-10">{t.energy}: {Math.floor(life)}%</p>
 
             {/* Interaction Controls - aparecem ao clicar no pet, logo abaixo do pet */}
             <div
@@ -194,21 +276,21 @@ const CompanionContainer: React.FC<CompanionContainerProps> = ({
                     onClick={eat}
                     className="bg-orange-100 hover:bg-orange-200 active:scale-95 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 dark:hover:bg-orange-900/50 border border-orange-200 dark:border-orange-700 text-xs px-3 py-2 rounded-xl font-bold transition-all shadow-sm"
                 >
-                    🍎 Comer
+                    {t.btnEat}
                 </button>
                 <button
                     type="button"
                     onClick={play}
                     className="bg-blue-100 hover:bg-blue-200 active:scale-95 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-700 text-xs px-3 py-2 rounded-xl font-bold transition-all shadow-sm"
                 >
-                    ⚽ Brincar
+                    {t.btnPlay}
                 </button>
                 <button
                     type="button"
                     onClick={sleep}
                     className="bg-indigo-100 hover:bg-indigo-200 active:scale-95 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-700 text-xs px-3 py-2 rounded-xl font-bold transition-all shadow-sm"
                 >
-                    💤 Dormir
+                    {t.btnSleep}
                 </button>
                 {onVariantChange && (
                     <button
@@ -216,7 +298,7 @@ const CompanionContainer: React.FC<CompanionContainerProps> = ({
                         onClick={onVariantChange}
                         className="bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 text-xs px-3 py-2 rounded-xl font-bold transition-all shadow-sm"
                     >
-                        🔄 Trocar
+                        {t.btnChange}
                     </button>
                 )}
             </div>
