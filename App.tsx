@@ -1,6 +1,6 @@
 
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Camera, Upload, ChevronLeft, Loader2, Save, ArrowRight, TrendingUp, Calculator, X, MessageSquarePlus, Calendar, Flame, Droplet, AlertTriangle } from 'lucide-react';
 import { TRANSLATIONS, MOCK_HISTORY, COLOR_PALETTES } from './constants';
 import { Language, Theme, NutritionalInfo, HistoryItem, WaterEntry, MealAnalysis, UserStats, DietaryRestrictions } from './types';
@@ -13,6 +13,7 @@ import HistoryCard from './components/HistoryCard';
 import BioimpedanceModal from './components/BioimpedanceModal';
 import DietaryRestrictionsModal from './components/DietaryRestrictionsModal';
 import DailyTracker from './components/DailyTracker';
+import NutrientTargetsCard from './components/NutrientTargetsCard';
 import CalendarModal from './components/CalendarModal';
 import DayDetailModal from './components/DayDetailModal';
 import WaterTracker from './components/WaterTracker';
@@ -40,6 +41,10 @@ import { TRIAL_SECONDS_LIMIT, TRIAL_MINUTES } from './constants/plans';
 
 import { getAvailablePets, PetDefinition } from './utils/petRegistry';
 import { getDietaryAlerts } from './utils/dietaryAlerts';
+import {
+  calculateDailyNutrientTargets,
+  getMicronutrientReference,
+} from './utils/nutritionTargets';
 
 function App() {
   // Logic to load pets (Get fresh list every render to handle dev HMR updates)
@@ -168,6 +173,17 @@ function App() {
 
   // Carregar e salvar dados por usuário (cada conta mantém seus próprios dados)
   const userId = session?.user?.id ?? null;
+
+  const userStatsForNutrients = useMemo((): UserStats | null => {
+    if (!userId) return null;
+    try {
+      const raw = localStorage.getItem(`biaNutriUserStats_${userId}`);
+      if (!raw) return null;
+      return JSON.parse(raw) as UserStats;
+    } catch {
+      return null;
+    }
+  }, [userId, isCalculatorOpen, dailyTarget]);
 
   // Verificar acesso (perfil, trial no servidor, assinatura) – sem localStorage
   useEffect(() => {
@@ -635,6 +651,18 @@ function App() {
       }),
       { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0 }
     );
+
+    const weightForNutrients = userStatsForNutrients
+      ? userStatsForNutrients.currentWeight ?? userStatsForNutrients.weight
+      : undefined;
+    const dayNutrientTargets =
+      dailyTarget != null
+        ? calculateDailyNutrientTargets(dailyTarget, {
+            weightKg: weightForNutrients,
+            gender: userStatsForNutrients?.gender,
+          })
+        : null;
+    const dayMicroRef = getMicronutrientReference(userStatsForNutrients?.gender);
     
     return (
     <div className="flex flex-col gap-6 pb-24">
@@ -671,6 +699,21 @@ function App() {
             lang={lang}
             onAddWater={handleAddWater}
           />
+
+          {dayNutrientTargets && (
+            <NutrientTargetsCard
+              targets={dayNutrientTargets}
+              microRef={dayMicroRef}
+              texts={texts}
+              current={{
+                protein: todayTotals.protein,
+                carbs: todayTotals.carbs,
+                fat: todayTotals.fat,
+                fiber: todayTotals.fiber,
+              }}
+              onClick={() => navigateToView('todayFoods')}
+            />
+          )}
         </>
       )}
 
@@ -1120,6 +1163,18 @@ function App() {
       { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0 }
     );
 
+    const tfWeight = userStatsForNutrients
+      ? userStatsForNutrients.currentWeight ?? userStatsForNutrients.weight
+      : undefined;
+    const tfTargets =
+      dailyTarget != null
+        ? calculateDailyNutrientTargets(dailyTarget, {
+            weightKg: tfWeight,
+            gender: userStatsForNutrients?.gender,
+          })
+        : null;
+    const tfMicroRef = getMicronutrientReference(userStatsForNutrients?.gender);
+
     const todayDate = new Date().toLocaleDateString(
       lang === 'pt' ? 'pt-BR' : 'en-US',
       { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
@@ -1154,6 +1209,20 @@ function App() {
           />
         )}
 
+        {tfTargets && (
+          <NutrientTargetsCard
+            targets={tfTargets}
+            microRef={tfMicroRef}
+            texts={texts}
+            current={{
+              protein: totals.protein,
+              carbs: totals.carbs,
+              fat: totals.fat,
+              fiber: totals.fiber,
+            }}
+          />
+        )}
+
         {/* Totals Summary */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2 mb-4">
@@ -1170,6 +1239,11 @@ function App() {
               </div>
               <span className="text-2xl font-bold text-brand-600 dark:text-brand-400">
                 {totals.calories.toFixed(0)}
+                {dailyTarget != null ? (
+                  <span className="text-base font-semibold text-slate-500 dark:text-slate-400 ml-1">
+                    / {dailyTarget}
+                  </span>
+                ) : null}
               </span>
             </div>
           </div>
@@ -1182,6 +1256,12 @@ function App() {
               </span>
               <p className="text-xl font-bold text-slate-800 dark:text-white">
                 {totals.protein.toFixed(1)}g
+                {tfTargets ? (
+                  <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+                    {' '}
+                    / {tfTargets.proteinG}g
+                  </span>
+                ) : null}
               </p>
             </div>
             <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3">
@@ -1190,6 +1270,12 @@ function App() {
               </span>
               <p className="text-xl font-bold text-slate-800 dark:text-white">
                 {totals.carbs.toFixed(1)}g
+                {tfTargets ? (
+                  <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+                    {' '}
+                    / {tfTargets.carbsG}g
+                  </span>
+                ) : null}
               </p>
             </div>
             <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3">
@@ -1198,6 +1284,12 @@ function App() {
               </span>
               <p className="text-xl font-bold text-slate-800 dark:text-white">
                 {totals.fat.toFixed(1)}g
+                {tfTargets ? (
+                  <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+                    {' '}
+                    / {tfTargets.fatG}g
+                  </span>
+                ) : null}
               </p>
             </div>
             <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3">
@@ -1217,6 +1309,12 @@ function App() {
             </span>
             <p className="text-xl font-bold text-slate-800 dark:text-white">
               {totals.fiber.toFixed(1)}g
+              {tfTargets ? (
+                <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+                  {' '}
+                  / {tfTargets.fiberG}g
+                </span>
+              ) : null}
             </p>
           </div>
 

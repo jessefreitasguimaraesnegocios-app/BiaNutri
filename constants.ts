@@ -213,6 +213,24 @@ export const TRANSLATIONS: Record<string, Translation> = {
     alertHighSugar: 'High sugar content',
     alertHighSodium: 'May contain high sodium',
     suggestionAvoid: 'We suggest avoiding or consuming with caution.',
+
+    nutrientTargetsTitle: 'Daily nutrient targets',
+    nutrientMacrosSection: 'Macronutrients',
+    nutrientMicroSection: 'Fiber & micronutrients',
+    macroProteinHint: 'Muscles, repair, satiety',
+    macroCarbsHint: 'Energy, brain function',
+    macroFatHint: 'Hormones, vitamin absorption',
+    microFiberHint: 'Digestion, satiety, blood sugar control',
+    microVitaminsTitle: 'Vitamins & minerals',
+    microVitaminsIntro:
+      'Support immunity, metabolism and overall health. Prefer varied, colorful whole foods. Approximate daily references for adults:',
+    microRefVitaminC: 'Vitamin C',
+    microRefVitaminD: 'Vitamin D',
+    microRefCalcium: 'Calcium',
+    microRefIron: 'Iron',
+    microRefPotassium: 'Potassium',
+    microRefDisclaimer:
+      'These figures are general guidance, not medical advice. Needs vary by age, pregnancy and conditions.',
   },
   pt: {
     title: 'BiaNutri',
@@ -325,6 +343,24 @@ export const TRANSLATIONS: Record<string, Translation> = {
     alertHighSugar: 'Alto teor de açúcar',
     alertHighSodium: 'Pode conter muito sódio',
     suggestionAvoid: 'Sugerimos evitar ou consumir com moderação.',
+
+    nutrientTargetsTitle: 'Metas nutricionais do dia',
+    nutrientMacrosSection: 'Macronutrientes',
+    nutrientMicroSection: 'Fibras e micronutrientes',
+    macroProteinHint: 'Músculos, saciedade, reparo tecidual',
+    macroCarbsHint: 'Energia, função cerebral',
+    macroFatHint: 'Hormônios, absorção de vitaminas',
+    microFiberHint: 'Digestão, saciedade, controle da glicemia',
+    microVitaminsTitle: 'Vitaminas e minerais',
+    microVitaminsIntro:
+      'Saúde, imunidade e metabolismo. Priorize alimentos variados e coloridos. Referências diárias aproximadas para adultos:',
+    microRefVitaminC: 'Vitamina C',
+    microRefVitaminD: 'Vitamina D',
+    microRefCalcium: 'Cálcio',
+    microRefIron: 'Ferro',
+    microRefPotassium: 'Potássio',
+    microRefDisclaimer:
+      'Valores orientativos; necessidades variam por idade, gestação e condições de saúde. Não substitui orientação profissional.',
   }
 };
 

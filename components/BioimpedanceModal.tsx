@@ -2,6 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calculator, Activity, Target } from 'lucide-react';
 import { Language, Translation, UserStats } from '../types';
+import NutrientTargetsCard from './NutrientTargetsCard';
+import {
+  calculateDailyNutrientTargets,
+  getMicronutrientReference,
+} from '../utils/nutritionTargets';
 
 interface BioimpedanceModalProps {
   isOpen: boolean;
@@ -389,6 +394,15 @@ const BioimpedanceModal: React.FC<BioimpedanceModalProps> = ({ isOpen, onClose, 
                   {texts.dailyNeeds}
                 </p>
               </div>
+
+              <NutrientTargetsCard
+                targets={calculateDailyNutrientTargets(Math.round(target), {
+                  weightKg: stats.weight,
+                  gender: stats.gender,
+                })}
+                microRef={getMicronutrientReference(stats.gender)}
+                texts={texts}
+              />
 
               <div className="space-y-4">
                 <div className="p-4 bg-yellow-50 dark:bg-yellow-900/10 rounded-xl border border-yellow-200 dark:border-yellow-900/50">

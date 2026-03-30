@@ -217,6 +217,23 @@ export interface Translation {
   alertHighSugar: string;
   alertHighSodium: string;
   suggestionAvoid: string;
+
+  /** Metas de macronutrientes e referência de micronutrientes */
+  nutrientTargetsTitle: string;
+  nutrientMacrosSection: string;
+  nutrientMicroSection: string;
+  macroProteinHint: string;
+  macroCarbsHint: string;
+  macroFatHint: string;
+  microFiberHint: string;
+  microVitaminsTitle: string;
+  microVitaminsIntro: string;
+  microRefVitaminC: string;
+  microRefVitaminD: string;
+  microRefCalcium: string;
+  microRefIron: string;
+  microRefPotassium: string;
+  microRefDisclaimer: string;
 }
 
 export const SUPPORTED_LANGUAGES: Language[] = ['en', 'pt'];
