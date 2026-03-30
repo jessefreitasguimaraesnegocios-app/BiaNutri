@@ -691,7 +691,7 @@ function App() {
             texts={texts}
             onClick={() => navigateToView('todayFoods')}
           />
-          
+
           <WaterTracker
             current={todayWater}
             goal={waterGoal}
@@ -699,21 +699,6 @@ function App() {
             lang={lang}
             onAddWater={handleAddWater}
           />
-
-          {dayNutrientTargets && (
-            <NutrientTargetsCard
-              targets={dayNutrientTargets}
-              microRef={dayMicroRef}
-              texts={texts}
-              current={{
-                protein: todayTotals.protein,
-                carbs: todayTotals.carbs,
-                fat: todayTotals.fat,
-                fiber: todayTotals.fiber,
-              }}
-              onClick={() => navigateToView('todayFoods')}
-            />
-          )}
         </>
       )}
 
@@ -762,6 +747,21 @@ function App() {
           </button>
         </div>
       </div>
+
+      {dailyTarget && dayNutrientTargets && (
+        <NutrientTargetsCard
+          targets={dayNutrientTargets}
+          microRef={dayMicroRef}
+          texts={texts}
+          current={{
+            protein: todayTotals.protein,
+            carbs: todayTotals.carbs,
+            fat: todayTotals.fat,
+            fiber: todayTotals.fiber,
+          }}
+          onClick={() => navigateToView('todayFoods')}
+        />
+      )}
     </div>
     );
   };
