@@ -106,14 +106,20 @@ function App() {
   const [paymentReturn, setPaymentReturn] = useState<'success' | 'failure' | null>(null);
   const [showNotSubscriberAfterVerify, setShowNotSubscriberAfterVerify] = useState(false);
   const carouselRef = useRef<HTMLDivElement>(null);
-  /** Scroll vertical do slide principal (home / resultados) — sobe ao analisar para mostrar o estado de loading. */
-  const mainContentScrollRef = useRef<HTMLDivElement>(null);
+  /** Slide central (home / resultados): scroll no topo e sem scroll durante análise */
+  const mainSlideRef = useRef<HTMLDivElement>(null);
   /** Só redirecionar para Home uma vez ao obter acesso; não redirecionar de novo ao navegar. */
   const hasScrolledToHomeRef = useRef(false);
   /** Tempo restante do trial em segundos para exibir no cronômetro (atualiza a cada 1s, sincroniza com o servidor a cada 15s). */
   const [trialDisplayRemainingSeconds, setTrialDisplayRemainingSeconds] = useState(0);
 
   const texts = TRANSLATIONS[lang];
+
+  useEffect(() => {
+    if (view === 'results' && isLoading && mainSlideRef.current) {
+      mainSlideRef.current.scrollTop = 0;
+    }
+  }, [view, isLoading]);
 
   // Função helper para navegação que sempre atualiza previousView
   const navigateToView = (newView: 'home' | 'results' | 'history' | 'dayDetails' | 'todayFoods') => {
@@ -186,16 +192,6 @@ function App() {
       return null;
     }
   }, [userId, isCalculatorOpen, dailyTarget]);
-
-  useEffect(() => {
-    if (!isLoading || view !== 'results') return;
-    const id = requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        mainContentScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
-      });
-    });
-    return () => cancelAnimationFrame(id);
-  }, [isLoading, view]);
 
   // Verificar acesso (perfil, trial no servidor, assinatura) – sem localStorage
   useEffect(() => {
@@ -781,31 +777,11 @@ function App() {
   const renderResults = () => {
     if (isLoading) {
       return (
-        <div className="flex flex-col gap-4 pb-24 w-full">
-          <div
-            className="rounded-2xl border-2 border-brand-500 dark:border-brand-400 bg-gradient-to-br from-brand-50 to-white dark:from-brand-950/50 dark:to-slate-900 p-6 shadow-lg shadow-brand-500/15 ring-2 ring-brand-500/20 dark:ring-brand-400/20"
-            role="status"
-            aria-live="polite"
-          >
-            <div className="flex flex-col items-center text-center gap-5 py-2">
-              <Loader2
-                className="animate-spin text-brand-600 dark:text-brand-400 shrink-0"
-                size={56}
-                strokeWidth={2.5}
-                aria-hidden
-              />
-              <div>
-                <p className="text-xl sm:text-2xl font-extrabold text-brand-800 dark:text-brand-200 tracking-tight">
-                  {texts.analyzing}
-                </p>
-                <p className="text-sm font-medium text-brand-700/85 dark:text-brand-300/90 mt-2">
-                  {lang === 'pt'
-                    ? 'Isso pode levar alguns segundos.'
-                    : 'This may take a few seconds.'}
-                </p>
-              </div>
-            </div>
-          </div>
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 min-h-0 w-full px-4 py-6">
+          <Loader2 className="animate-spin text-brand-500 shrink-0" size={48} aria-hidden />
+          <p className="text-slate-600 dark:text-slate-300 font-medium animate-pulse text-center text-balance max-w-sm">
+            {texts.analyzing}
+          </p>
         </div>
       );
     }
@@ -2199,8 +2175,10 @@ function App() {
 
         {/* Slide 1 (centro): Home (trial strip + conteúdo principal) */}
         <div
-          ref={mainContentScrollRef}
-          className="flex-shrink-0 w-full min-w-full snap-start flex flex-col overflow-y-auto"
+          ref={mainSlideRef}
+          className={`flex-shrink-0 w-full min-w-full min-h-0 h-full snap-start flex flex-col ${
+            view === 'results' && isLoading ? 'overflow-hidden' : 'overflow-y-auto'
+          }`}
         >
           {showTrialCountdown && (
             <div className="max-w-md mx-auto px-4 pt-1 pb-2 flex-shrink-0">
@@ -2239,7 +2217,7 @@ function App() {
               </div>
             </div>
           )}
-          <main className="max-w-md mx-auto p-4 flex-1">
+          <main className="max-w-md mx-auto p-4 flex-1 flex flex-col min-h-0 w-full">
             {view === 'home' && renderHome()}
             {view === 'results' && renderResults()}
             {view === 'history' && renderHistory()}
