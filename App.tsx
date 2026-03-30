@@ -106,20 +106,12 @@ function App() {
   const [paymentReturn, setPaymentReturn] = useState<'success' | 'failure' | null>(null);
   const [showNotSubscriberAfterVerify, setShowNotSubscriberAfterVerify] = useState(false);
   const carouselRef = useRef<HTMLDivElement>(null);
-  /** Slide central (home / resultados): scroll no topo e sem scroll durante análise */
-  const mainSlideRef = useRef<HTMLDivElement>(null);
   /** Só redirecionar para Home uma vez ao obter acesso; não redirecionar de novo ao navegar. */
   const hasScrolledToHomeRef = useRef(false);
   /** Tempo restante do trial em segundos para exibir no cronômetro (atualiza a cada 1s, sincroniza com o servidor a cada 15s). */
   const [trialDisplayRemainingSeconds, setTrialDisplayRemainingSeconds] = useState(0);
 
   const texts = TRANSLATIONS[lang];
-
-  useEffect(() => {
-    if (view === 'results' && isLoading && mainSlideRef.current) {
-      mainSlideRef.current.scrollTop = 0;
-    }
-  }, [view, isLoading]);
 
   // Função helper para navegação que sempre atualiza previousView
   const navigateToView = (newView: 'home' | 'results' | 'history' | 'dayDetails' | 'todayFoods') => {
@@ -777,11 +769,9 @@ function App() {
   const renderResults = () => {
     if (isLoading) {
       return (
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 min-h-0 w-full px-4 py-6">
-          <Loader2 className="animate-spin text-brand-500 shrink-0" size={48} aria-hidden />
-          <p className="text-slate-600 dark:text-slate-300 font-medium animate-pulse text-center text-balance max-w-sm">
-            {texts.analyzing}
-          </p>
+        <div className="flex flex-col items-center justify-center min-h-[60vh]">
+          <Loader2 className="animate-spin text-brand-500 mb-4" size={48} />
+          <p className="text-slate-600 dark:text-slate-300 font-medium animate-pulse">{texts.analyzing}</p>
         </div>
       );
     }
@@ -2174,12 +2164,7 @@ function App() {
         </div>
 
         {/* Slide 1 (centro): Home (trial strip + conteúdo principal) */}
-        <div
-          ref={mainSlideRef}
-          className={`flex-shrink-0 w-full min-w-full min-h-0 h-full snap-start flex flex-col ${
-            view === 'results' && isLoading ? 'overflow-hidden' : 'overflow-y-auto'
-          }`}
-        >
+        <div className="flex-shrink-0 w-full min-w-full snap-start flex flex-col overflow-y-auto">
           {showTrialCountdown && (
             <div className="max-w-md mx-auto px-4 pt-1 pb-2 flex-shrink-0">
               <div className="rounded-xl bg-brand-500/15 dark:bg-brand-500/20 border border-brand-500/30 px-3 py-2.5">
@@ -2217,7 +2202,7 @@ function App() {
               </div>
             </div>
           )}
-          <main className="max-w-md mx-auto p-4 flex-1 flex flex-col min-h-0 w-full">
+          <main className="max-w-md mx-auto p-4 flex-1">
             {view === 'home' && renderHome()}
             {view === 'results' && renderResults()}
             {view === 'history' && renderHistory()}
