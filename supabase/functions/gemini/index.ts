@@ -13,6 +13,53 @@ interface RequestBody {
   userDescription?: string;
 }
 
+/** Ordem: melhor custo/cota no free tier (RPD alto) → qualidade visão → lite 2.5 (RPM maior). */
+const GEMINI_MODEL_CHAIN = [
+  "gemini-3.1-flash-lite-preview",
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+] as const;
+
+const GEMINI_API_ROOT = "https://generativelanguage.googleapis.com/v1beta";
+
+function buildGeminiUrl(model: string, apiKey: string): string {
+  return `${GEMINI_API_ROOT}/models/${model}:generateContent?key=${apiKey}`;
+}
+
+function errorMessageFromBody(errorData: Record<string, unknown>, fallback: string): string {
+  const err = errorData?.error as Record<string, unknown> | undefined;
+  if (err?.message && typeof err.message === "string") return err.message;
+  if (typeof errorData?.message === "string") return errorData.message;
+  return fallback;
+}
+
+/** Erros em que vale tentar o próximo modelo na cadeia. */
+function shouldTryNextModel(
+  status: number,
+  errorText: string,
+  errorData: Record<string, unknown>,
+): boolean {
+  if (status === 429 || status === 502 || status === 503 || status === 504) {
+    return true;
+  }
+  const msg = `${errorMessageFromBody(errorData, errorText)} ${errorText}`.toLowerCase();
+  if (
+    msg.includes("high demand") ||
+    msg.includes("unavailable") ||
+    msg.includes("overloaded") ||
+    msg.includes("resource exhausted") ||
+    msg.includes("try again later") ||
+    msg.includes("deadline exceeded")
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function isNonRetryableClientError(status: number): boolean {
+  return status === 400 || status === 401 || status === 403 || status === 404;
+}
+
 interface GeminiResponse {
   foods: Array<{
     foodName: string;
@@ -152,19 +199,9 @@ Return ONLY the JSON object, nothing else.`;
     }
 
     // ============================================
-    // 4. PREPARAR A CHAMADA PARA A API GEMINI
+    // 4–6. CHAMADA GEMINI (cadeia de modelos + retry em cota/sobrecarga)
     // ============================================
-    // Modelo principal: gemini-2.5-flash (com quota ativa)
-    // Modelo fallback: gemini-2.5-flash-lite (usado em caso de erro 429)
-    // Modelos descontinuados: gemini-2.0, gemini-1.5, gemini-1.0
-    const primaryModel = "gemini-2.5-flash";
-    const fallbackModel = "gemini-2.5-flash-lite";
-    
-    let currentModel = primaryModel;
-    let geminiUrl = `https://generativelanguage.googleapis.com/v1/models/${currentModel}:generateContent?key=${cleanApiKey}`;
-    
-    console.log(`🔵 Chamando API Gemini com modelo ${currentModel}...`);
-
+    // v1beta: necessário para modelos preview (ex.: gemini-3.1-flash-lite-preview) e estável para 2.5.x
     const requestBody = {
       contents: [
         {
@@ -181,189 +218,186 @@ Return ONLY the JSON object, nothing else.`;
       ],
     };
 
-    // ============================================
-    // 5. FAZER A CHAMADA PARA A API GEMINI
-    // ============================================
-    let geminiResponse = await fetch(geminiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
-    });
+    let geminiResponse: Response | null = null;
+    let currentModel = GEMINI_MODEL_CHAIN[0];
+    let lastErrorText = "";
+    let lastErrorData: Record<string, unknown> = {};
+    let lastStatus = 0;
 
-    // ============================================
-    // 6. TRATAR A RESPOSTA DA API
-    // ============================================
-    if (!geminiResponse.ok) {
+    for (let i = 0; i < GEMINI_MODEL_CHAIN.length; i++) {
+      currentModel = GEMINI_MODEL_CHAIN[i];
+      const geminiUrl = buildGeminiUrl(currentModel, cleanApiKey);
+      console.log(`🔵 Chamando API Gemini [${i + 1}/${GEMINI_MODEL_CHAIN.length}] modelo ${currentModel}...`);
+
+      if (i > 0) {
+        await new Promise((r) => setTimeout(r, 400));
+      }
+
+      geminiResponse = await fetch(geminiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (geminiResponse.ok) {
+        console.log(`✅ Resposta OK com modelo ${currentModel}`);
+        break;
+      }
+
       const errorText = await geminiResponse.text();
-      let errorData;
-      
+      let errorData: Record<string, unknown> = {};
       try {
-        errorData = JSON.parse(errorText);
+        errorData = JSON.parse(errorText) as Record<string, unknown>;
       } catch {
         errorData = { message: errorText };
       }
-      
-      console.error("❌ Erro na API Gemini. Status:", geminiResponse.status);
-      console.error("❌ Erro detalhado:", JSON.stringify(errorData, null, 2));
-      
-      // Erro de quota excedida (429) - Tentar modelo fallback
-      if (geminiResponse.status === 429 && currentModel === primaryModel) {
-        console.error("⚠️ Erro 429: Quota excedida no modelo principal. Tentando modelo fallback...");
-        
-        // Tentar com modelo fallback
-        currentModel = fallbackModel;
-        geminiUrl = `https://generativelanguage.googleapis.com/v1/models/${currentModel}:generateContent?key=${cleanApiKey}`;
-        
-        console.log(`🔄 Tentando novamente com modelo fallback: ${currentModel}...`);
-        
-        // Fazer nova chamada com modelo fallback
-        geminiResponse = await fetch(geminiUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(requestBody),
-        });
-        
-        // Se ainda der erro após tentar fallback, retornar erro
-        if (!geminiResponse.ok) {
-          const fallbackErrorText = await geminiResponse.text();
-          let fallbackErrorData;
-          
-          try {
-            fallbackErrorData = JSON.parse(fallbackErrorText);
-          } catch {
-            fallbackErrorData = { message: fallbackErrorText };
-          }
-          
-          console.error("❌ Erro também no modelo fallback. Status:", geminiResponse.status);
-          
-          // Tentar extrair informações de retry do erro
-          let retryAfter = null;
-          let quotaDetails = null;
-          
-          if (fallbackErrorData?.error?.details) {
-            const retryInfo = fallbackErrorData.error.details.find(
-              (d: any) => d["@type"] === "type.googleapis.com/google.rpc.RetryInfo"
-            );
-            if (retryInfo?.retryDelay) {
-              retryAfter = Math.ceil(parseFloat(retryInfo.retryDelay.replace("s", "")));
-            }
-            
-            const quotaFailure = fallbackErrorData.error.details.find(
-              (d: any) => d["@type"] === "type.googleapis.com/google.rpc.QuotaFailure"
-            );
-            if (quotaFailure) {
-              quotaDetails = quotaFailure.violations;
-            }
-          }
-          
-          let errorMessage = "Quota da API do Gemini excedida em ambos os modelos.";
-          if (retryAfter) {
-            errorMessage += ` Aguarde ${retryAfter} segundos antes de tentar novamente.`;
-          } else {
-            errorMessage += " Aguarde alguns minutos e tente novamente.";
-          }
-          
-          if (fallbackErrorData?.error?.message?.includes("free_tier")) {
-            errorMessage += " (Free tier limitado - considere verificar seu plano no Google AI Studio)";
-          }
-          
+
+      lastErrorText = errorText;
+      lastErrorData = errorData;
+      lastStatus = geminiResponse.status;
+
+      console.error(`❌ Erro API Gemini modelo ${currentModel}. Status:`, lastStatus);
+      console.error("❌ Detalhe:", JSON.stringify(errorData, null, 2));
+
+      if (isNonRetryableClientError(lastStatus)) {
+        if (lastStatus === 401 || lastStatus === 403) {
           return new Response(
             JSON.stringify({
-              error: errorMessage,
-              code: 429,
-              isQuotaError: true,
-              retryAfter: retryAfter,
-              quotaDetails: quotaDetails,
-              helpUrl: "https://ai.google.dev/gemini-api/docs/rate-limits",
+              error:
+                "API Key do Gemini inválida ou sem permissão. Verifique se a chave está correta no Supabase Secrets e faça redeploy da função.",
+              code: lastStatus,
+              isApiKeyError: true,
             }),
             {
-              status: 429,
+              status: 500,
               headers: { ...corsHeaders, "Content-Type": "application/json" },
-            }
+            },
           );
-        } else {
-          console.log(`✅ Modelo fallback ${currentModel} funcionou!`);
         }
-      } else if (geminiResponse.status === 429) {
-        // Já tentou fallback e ainda deu erro 429
-        console.error("⚠️ Erro 429: Quota excedida também no modelo fallback");
-        
-        let retryAfter = null;
-        let quotaDetails = null;
-        
-        if (errorData?.error?.details) {
-          const retryInfo = errorData.error.details.find(
-            (d: any) => d["@type"] === "type.googleapis.com/google.rpc.RetryInfo"
-          );
+        // 400 / 404 (modelo não disponível na região/chave): tentar próximo se for 404
+        if (lastStatus === 404 && i < GEMINI_MODEL_CHAIN.length - 1) {
+          console.warn(`⚠️ Modelo ${currentModel} indisponível (404), tentando próximo...`);
+          continue;
+        }
+        return new Response(
+          JSON.stringify({
+            error: `Erro na API Gemini: ${errorMessageFromBody(errorData, errorText)}`,
+            status: lastStatus,
+          }),
+          {
+            status: lastStatus >= 400 && lastStatus < 600 ? lastStatus : 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      const tryNext = shouldTryNextModel(lastStatus, errorText, errorData);
+      if (tryNext && i < GEMINI_MODEL_CHAIN.length - 1) {
+        console.warn(`🔄 Tentando próximo modelo na cadeia (motivo: status ${lastStatus})...`);
+        continue;
+      }
+
+      // Último modelo ou erro não retryable pelo critério acima
+      if (lastStatus === 429) {
+        let retryAfter: number | null = null;
+        let quotaDetails: unknown = null;
+        const details = (lastErrorData?.error as Record<string, unknown> | undefined)?.details as
+          | Array<Record<string, unknown>>
+          | undefined;
+        if (Array.isArray(details)) {
+          const retryInfo = details.find(
+            (d) => d["@type"] === "type.googleapis.com/google.rpc.RetryInfo",
+          ) as { retryDelay?: string } | undefined;
           if (retryInfo?.retryDelay) {
-            retryAfter = Math.ceil(parseFloat(retryInfo.retryDelay.replace("s", "")));
+            retryAfter = Math.ceil(parseFloat(String(retryInfo.retryDelay).replace("s", "")));
           }
-          
-          const quotaFailure = errorData.error.details.find(
-            (d: any) => d["@type"] === "type.googleapis.com/google.rpc.QuotaFailure"
+          const quotaFailure = details.find(
+            (d) => d["@type"] === "type.googleapis.com/google.rpc.QuotaFailure",
           );
-          if (quotaFailure) {
-            quotaDetails = quotaFailure.violations;
+          if (quotaFailure && typeof quotaFailure === "object" && "violations" in quotaFailure) {
+            quotaDetails = (quotaFailure as { violations: unknown }).violations;
           }
         }
-        
-        let errorMessage = "Quota da API do Gemini excedida em ambos os modelos.";
+        let errorMessage =
+          "Quota da API do Gemini excedida nos modelos tentados. Aguarde e tente novamente.";
         if (retryAfter) {
-          errorMessage += ` Aguarde ${retryAfter} segundos antes de tentar novamente.`;
-        } else {
-          errorMessage += " Aguarde alguns minutos e tente novamente.";
+          errorMessage += ` Aguarde aproximadamente ${retryAfter} segundos.`;
         }
-        
-        if (errorData?.error?.message?.includes("free_tier")) {
-          errorMessage += " (Free tier limitado - considere verificar seu plano no Google AI Studio)";
+        const msg = errorMessageFromBody(lastErrorData, lastErrorText);
+        if (msg.includes("free_tier")) {
+          errorMessage += " (Limite do plano gratuito — veja o Google AI Studio.)";
         }
-        
         return new Response(
           JSON.stringify({
             error: errorMessage,
             code: 429,
             isQuotaError: true,
-            retryAfter: retryAfter,
-            quotaDetails: quotaDetails,
+            retryAfter,
+            quotaDetails,
             helpUrl: "https://ai.google.dev/gemini-api/docs/rate-limits",
           }),
           {
             status: 429,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
-      
-      // Erro de API key inválida (401/403)
-      if (geminiResponse.status === 401 || geminiResponse.status === 403) {
-        console.error("⚠️ Erro 401/403: API Key inválida ou sem permissão");
-        return new Response(
-          JSON.stringify({
-            error: "API Key do Gemini inválida ou sem permissão. Verifique se a chave está correta no Supabase Secrets e faça redeploy da função.",
-            code: geminiResponse.status,
-            isApiKeyError: true,
-          }),
-          {
-            status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
+          },
         );
       }
 
-      // Outros erros
+      if (lastStatus === 503 || lastStatus === 502 || lastStatus === 504) {
+        return new Response(
+          JSON.stringify({
+            error:
+              "Serviço Gemini temporariamente sobrecarregado ou indisponível. Tente novamente em instantes.",
+            code: lastStatus,
+            isOverloadError: true,
+          }),
+          {
+            status: 503,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      // Último modelo: mensagens tipo "high demand" costumam vir como 500 no corpo
+      if (
+        i === GEMINI_MODEL_CHAIN.length - 1 &&
+        shouldTryNextModel(lastStatus, errorText, errorData)
+      ) {
+        return new Response(
+          JSON.stringify({
+            error:
+              "Serviço Gemini temporariamente sobrecarregado ou indisponível. Tente novamente em instantes.",
+            code: lastStatus,
+            isOverloadError: true,
+          }),
+          {
+            status: 503,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+
       return new Response(
         JSON.stringify({
-          error: `Erro na API Gemini: ${errorData.error?.message || errorData.message || errorText}`,
-          status: geminiResponse.status,
+          error: `Erro na API Gemini: ${errorMessageFromBody(lastErrorData, lastErrorText)}`,
+          status: lastStatus,
         }),
         {
-          status: geminiResponse.status,
+          status: lastStatus >= 400 && lastStatus < 600 ? lastStatus : 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        },
+      );
+    }
+
+    if (!geminiResponse?.ok) {
+      return new Response(
+        JSON.stringify({
+          error: `Erro na API Gemini: ${errorMessageFromBody(lastErrorData, lastErrorText)}`,
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 

@@ -71,6 +71,14 @@ export const analyzeFoodImage = async (
         throw quotaError;
       }
 
+      if (response.status === 503 || (errorData as { isOverloadError?: boolean }).isOverloadError) {
+        throw new Error(
+          typeof errorData.error === "string"
+            ? errorData.error
+            : "Serviço temporariamente sobrecarregado. Tente novamente em instantes.",
+        );
+      }
+
       throw new Error(errorData.error || `Erro na Edge Function: ${response.statusText}`);
     }
 
