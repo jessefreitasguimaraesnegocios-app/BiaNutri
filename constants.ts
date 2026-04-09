@@ -257,6 +257,9 @@ export const TRANSLATIONS: Record<string, Translation> = {
     dietTips: 'Tips',
     dietTotalKcal: 'Approx. total',
     dietOpenCalculatorHint: 'Open “Edit stats” on your profile slide to update goal and targets.',
+    dietCachedTodayHint:
+      'Today’s plan is saved until midnight. Open anytime — no new request until tomorrow.',
+    dietGenerateLockedBtn: 'New plan after midnight (00:00)',
   },
   pt: {
     title: 'BiaNutri',
@@ -414,6 +417,9 @@ export const TRANSLATIONS: Record<string, Translation> = {
     dietTotalKcal: 'Total aproximado',
     dietOpenCalculatorHint:
       'Use “Editar Dados” no slide de perfil para atualizar objetivo e metas.',
+    dietCachedTodayHint:
+      'O plano de hoje fica salvo até a meia-noite. Abra quando quiser — sem novo pedido à API até amanhã.',
+    dietGenerateLockedBtn: 'Novo plano após meia-noite (00:00)',
   }
 };
 

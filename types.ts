@@ -259,6 +259,9 @@ export interface Translation {
   dietTips: string;
   dietTotalKcal: string;
   dietOpenCalculatorHint: string;
+  /** Plano já gerado hoje; novo só após meia-noite local */
+  dietCachedTodayHint: string;
+  dietGenerateLockedBtn: string;
 }
 
 /** Plano retornado pela Edge Function diet-suggestions */

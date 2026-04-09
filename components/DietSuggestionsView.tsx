@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, Loader2, Sparkles } from "lucide-react";
 import type {
   DietaryRestrictions,
@@ -9,6 +9,12 @@ import type {
 } from "../types";
 import { fetchDietSuggestions } from "../services/dietSuggestionsService";
 import { calculateDailyNutrientTargets } from "../utils/nutritionTargets";
+import {
+  getLocalDateKey,
+  isCachedPlanForToday,
+  loadCachedDietPlan,
+  saveCachedDietPlan,
+} from "../utils/dietPlanCache";
 
 function buildRestrictionsSummary(
   r: DietaryRestrictions | null,
@@ -61,6 +67,7 @@ interface DietSuggestionsViewProps {
   lang: Language;
   texts: Translation;
   onBack: () => void;
+  userId: string | null;
   dailyTarget: number | null;
   userStats: UserStats | null;
   dietaryRestrictions: DietaryRestrictions | null;
@@ -71,6 +78,7 @@ const DietSuggestionsView: React.FC<DietSuggestionsViewProps> = ({
   lang,
   texts,
   onBack,
+  userId,
   dailyTarget,
   userStats,
   dietaryRestrictions,
@@ -86,6 +94,30 @@ const DietSuggestionsView: React.FC<DietSuggestionsViewProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [plan, setPlan] = useState<DietPlanDay | null>(null);
+  /** true quando o plano exibido veio do cache do mesmo dia local */
+  const [lockedForToday, setLockedForToday] = useState(false);
+
+  const syncPlanWithCache = useCallback(() => {
+    const today = getLocalDateKey();
+    const cached = loadCachedDietPlan(userId);
+    if (cached?.dateKey === today && cached.plan) {
+      setPlan(cached.plan);
+      setLockedForToday(true);
+      setError(null);
+    } else {
+      setLockedForToday(false);
+      setPlan(null);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    syncPlanWithCache();
+  }, [syncPlanWithCache]);
+
+  useEffect(() => {
+    const id = setInterval(syncPlanWithCache, 60_000);
+    return () => clearInterval(id);
+  }, [syncPlanWithCache]);
 
   const goal = userStats?.goal ?? "maintain";
   const goalText =
@@ -112,6 +144,14 @@ const DietSuggestionsView: React.FC<DietSuggestionsViewProps> = ({
 
   const handleGenerate = async () => {
     setError(null);
+    const today = getLocalDateKey();
+    const cached = loadCachedDietPlan(userId);
+    if (cached && cached.dateKey === today && cached.plan) {
+      setPlan(cached.plan);
+      setLockedForToday(true);
+      return;
+    }
+
     setPlan(null);
     if (!Number.isFinite(parsedKcal) || parsedKcal < 800) {
       setError(texts.dietErrorNoTarget);
@@ -138,13 +178,18 @@ const DietSuggestionsView: React.FC<DietSuggestionsViewProps> = ({
             ? parsedConsumed
             : 0,
       });
+      saveCachedDietPlan(userId, p);
       setPlan(p);
+      setLockedForToday(true);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : texts.errorGeneric);
     } finally {
       setLoading(false);
     }
   };
+
+  const planLockedToday =
+    lockedForToday && isCachedPlanForToday(userId) && !!plan;
 
   return (
     <div className="flex flex-col gap-5 pb-28">
@@ -168,6 +213,12 @@ const DietSuggestionsView: React.FC<DietSuggestionsViewProps> = ({
       <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
         {texts.dietSuggestionsSubtitle}
       </p>
+
+      {planLockedToday && (
+        <div className="rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/80 dark:bg-emerald-950/25 text-emerald-800 dark:text-emerald-200 text-sm p-3">
+          {texts.dietCachedTodayHint}
+        </div>
+      )}
 
       <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 space-y-4 shadow-sm">
         <div>
@@ -226,15 +277,17 @@ const DietSuggestionsView: React.FC<DietSuggestionsViewProps> = ({
 
         <button
           type="button"
-          disabled={loading}
+          disabled={loading || planLockedToday}
           onClick={handleGenerate}
-          className="w-full bg-brand-500 hover:bg-brand-600 disabled:opacity-60 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2 transition-colors"
+          className="w-full bg-brand-500 hover:bg-brand-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2 transition-colors"
         >
           {loading ? (
             <>
               <Loader2 className="animate-spin" size={20} />
               {texts.dietLoading}
             </>
+          ) : planLockedToday ? (
+            <span className="text-center px-2">{texts.dietGenerateLockedBtn}</span>
           ) : (
             <>
               <Sparkles size={20} />

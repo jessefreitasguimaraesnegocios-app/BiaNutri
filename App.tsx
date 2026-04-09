@@ -1373,10 +1373,11 @@ function App() {
 
     return (
       <DietSuggestionsView
-        key={`diet-${dailyTarget ?? 0}-${userId ?? 'anon'}`}
+        key={`diet-${userId ?? 'guest'}`}
         lang={lang}
         texts={texts}
         onBack={goBack}
+        userId={userId}
         dailyTarget={dailyTarget}
         userStats={userStatsForNutrients}
         dietaryRestrictions={dietaryRestrictions}

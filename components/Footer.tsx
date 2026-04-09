@@ -9,6 +9,16 @@ interface FooterProps {
   onDietSuggestions: () => void;
 }
 
+/** Botões laterais: mesmo “card” (borda, sombra, altura, cantos). */
+const footerSideCardBase =
+  'flex-1 min-w-0 flex flex-col sm:flex-row items-center justify-center gap-1.5 px-3 py-3 rounded-2xl border shadow-sm min-h-[3.25rem] font-semibold text-[10px] sm:text-xs transition-colors active:scale-[0.98]';
+
+const footerRestrictionsCard =
+  `${footerSideCardBase} border-red-200 dark:border-red-900/50 bg-red-50/90 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/50`;
+
+const footerDietCard =
+  `${footerSideCardBase} border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/90 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-950/50`;
+
 const Footer: React.FC<FooterProps> = ({
   texts,
   onCalendar,
@@ -21,11 +31,11 @@ const Footer: React.FC<FooterProps> = ({
         <button
           type="button"
           onClick={onRestrictions}
-          className="flex-1 min-w-0 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 px-2 py-2 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50/90 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/50 font-semibold text-[10px] sm:text-xs transition-colors active:scale-[0.98]"
+          className={footerRestrictionsCard}
           aria-label={texts.dietaryRestrictionsBtn}
         >
           <ShieldAlert size={18} className="shrink-0" aria-hidden />
-          <span className="truncate text-center leading-tight max-w-[4.5rem] sm:max-w-none">
+          <span className="truncate text-center leading-tight max-w-[5rem] sm:max-w-none">
             {texts.footerRestrictionsBtn}
           </span>
         </button>
@@ -43,11 +53,11 @@ const Footer: React.FC<FooterProps> = ({
         <button
           type="button"
           onClick={onDietSuggestions}
-          className="flex-1 min-w-0 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 px-2 py-2 rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/90 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-950/50 font-semibold text-[10px] sm:text-xs transition-colors active:scale-[0.98]"
+          className={footerDietCard}
           aria-label={texts.dietSuggestionsBtn}
         >
           <Sparkles size={18} className="shrink-0" aria-hidden />
-          <span className="truncate text-center leading-tight max-w-[4.5rem] sm:max-w-none">
+          <span className="truncate text-center leading-tight max-w-[5rem] sm:max-w-none">
             {texts.dietSuggestionsBtn}
           </span>
         </button>
