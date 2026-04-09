@@ -8,6 +8,7 @@ import { analyzeFoodImage, fileToGenerativePart, mealToSingleFood } from './serv
 import { calculateWaterGoal, getTodayWaterTotal, getTodayWaterEntries } from './services/waterService';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import DietSuggestionsView from './components/DietSuggestionsView';
 import NutritionChart from './components/NutritionChart';
 import HistoryCard from './components/HistoryCard';
 import BioimpedanceModal from './components/BioimpedanceModal';
@@ -54,10 +55,10 @@ function App() {
   const [theme, setTheme] = useState<Theme>('light');
   const [lang, setLang] = useState<Language>('pt');
   const [colorKey, setColorKey] = useState<string>('purple');
-  const [view, setView] = useState<'home' | 'results' | 'history' | 'dayDetails' | 'todayFoods'>('home');
+  const [view, setView] = useState<'home' | 'results' | 'history' | 'dayDetails' | 'todayFoods' | 'dietSuggestions'>('home');
   const [session, setSession] = useState<Session | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [previousView, setPreviousView] = useState<'home' | 'results' | 'history' | 'dayDetails' | 'todayFoods'>('home');
+  const [previousView, setPreviousView] = useState<'home' | 'results' | 'history' | 'dayDetails' | 'todayFoods' | 'dietSuggestions'>('home');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentMeal, setCurrentMeal] = useState<MealAnalysis | null>(null);
@@ -114,7 +115,7 @@ function App() {
   const texts = TRANSLATIONS[lang];
 
   // Função helper para navegação que sempre atualiza previousView
-  const navigateToView = (newView: 'home' | 'results' | 'history' | 'dayDetails' | 'todayFoods') => {
+  const navigateToView = (newView: 'home' | 'results' | 'history' | 'dayDetails' | 'todayFoods' | 'dietSuggestions') => {
     setPreviousView(view);
     setView(newView);
   };
@@ -1364,6 +1365,26 @@ function App() {
     );
   };
 
+  const renderDietSuggestions = () => {
+    const todayStr = new Date().toDateString();
+    const todayConsumedKcal = history
+      .filter((item) => new Date(item.timestamp).toDateString() === todayStr)
+      .reduce((sum, item) => sum + item.calories, 0);
+
+    return (
+      <DietSuggestionsView
+        key={`diet-${dailyTarget ?? 0}-${userId ?? 'anon'}`}
+        lang={lang}
+        texts={texts}
+        onBack={goBack}
+        dailyTarget={dailyTarget}
+        userStats={userStatsForNutrients}
+        dietaryRestrictions={dietaryRestrictions}
+        todayConsumedKcal={todayConsumedKcal}
+      />
+    );
+  };
+
   // Helper function to get BMI color class
   const getBmiColor = (val: number) => {
     if (val < 18.5) return 'text-blue-500';
@@ -1659,15 +1680,6 @@ function App() {
       >
         <Calculator size={20} />
         {texts.recalculate}
-      </button>
-
-      {/* Botão Restrições Alimentares (cruz vermelha) */}
-      <button
-        onClick={() => setIsDietaryRestrictionsOpen(true)}
-        className="w-full bg-white dark:bg-slate-800 border-2 border-dashed border-red-200 dark:border-red-900/50 text-red-500 dark:text-red-400 rounded-2xl p-4 flex items-center justify-center gap-2 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-      >
-        <X size={22} strokeWidth={2.5} />
-        {texts.dietaryRestrictionsBtn}
       </button>
       </div>
     );
@@ -2208,6 +2220,7 @@ function App() {
             {view === 'history' && renderHistory()}
             {view === 'dayDetails' && renderDayDetails()}
             {view === 'todayFoods' && renderTodayFoods()}
+            {view === 'dietSuggestions' && renderDietSuggestions()}
           </main>
           <p className="text-center text-xs text-slate-400 dark:text-slate-500 py-1 px-2 flex-shrink-0 mt-auto">
             {lang === 'pt' ? '← Planos | Jejum →' : '← Plans | Fasting →'}
@@ -2293,11 +2306,12 @@ function App() {
 
       <Footer
         texts={texts}
-        onClick={() => {
-          // Salvar a view atual antes de abrir o calendário
+        onRestrictions={() => setIsDietaryRestrictionsOpen(true)}
+        onCalendar={() => {
           setPreviousView(view);
           setIsCalendarOpen(true);
         }}
+        onDietSuggestions={() => navigateToView('dietSuggestions')}
       />
 
       <CalendarModal

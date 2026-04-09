@@ -205,6 +205,8 @@ export interface Translation {
   // Dietary restrictions / Restrições alimentares
   dietaryRestrictionsTitle: string;
   dietaryRestrictionsBtn: string;
+  /** Rótulo curto no rodapé (ex.: Restrições) */
+  footerRestrictionsBtn: string;
   hasAllergies: string;
   hasIntolerances: string;
   isDiabetic: string;
@@ -234,6 +236,51 @@ export interface Translation {
   microRefIron: string;
   microRefPotassium: string;
   microRefDisclaimer: string;
+
+  /** Sugestões de cardápio do dia */
+  dietSuggestionsBtn: string;
+  dietSuggestionsTitle: string;
+  dietSuggestionsSubtitle: string;
+  dietTargetKcalLabel: string;
+  dietBudgetLabel: string;
+  dietBudgetOptional: string;
+  dietGoalLabel: string;
+  dietConsumedToday: string;
+  dietGenerateBtn: string;
+  dietLoading: string;
+  dietErrorNoTarget: string;
+  dietDisclaimer: string;
+  dietSlotBreakfast: string;
+  dietSlotLunch: string;
+  dietSlotDinner: string;
+  dietSlotSnack: string;
+  dietDessert: string;
+  dietBeverages: string;
+  dietTips: string;
+  dietTotalKcal: string;
+  dietOpenCalculatorHint: string;
+}
+
+/** Plano retornado pela Edge Function diet-suggestions */
+export interface DietPlanMeal {
+  slot: string;
+  title: string;
+  items: string[];
+  approxCalories?: number;
+}
+
+export interface DietPlanBeverage {
+  name: string;
+  note: string;
+}
+
+export interface DietPlanDay {
+  title: string;
+  meals: DietPlanMeal[];
+  dessert: { title: string; items: string[]; approxCalories?: number };
+  beverages: DietPlanBeverage[];
+  tips: string;
+  totalApproxCalories?: number;
 }
 
 export const SUPPORTED_LANGUAGES: Language[] = ['en', 'pt'];

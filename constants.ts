@@ -201,6 +201,7 @@ export const TRANSLATIONS: Record<string, Translation> = {
 
     dietaryRestrictionsTitle: 'Dietary Restrictions',
     dietaryRestrictionsBtn: 'Allergies & Restrictions',
+    footerRestrictionsBtn: 'Restrictions',
     hasAllergies: 'Do you have any allergies?',
     hasIntolerances: 'Do you have any intolerances?',
     isDiabetic: 'Are you diabetic?',
@@ -231,6 +232,31 @@ export const TRANSLATIONS: Record<string, Translation> = {
     microRefPotassium: 'Potassium',
     microRefDisclaimer:
       'These figures are general guidance, not medical advice. Needs vary by age, pregnancy and conditions.',
+
+    dietSuggestionsBtn: 'Today’s plan',
+    dietSuggestionsTitle: 'Meal suggestions for today',
+    dietSuggestionsSubtitle:
+      'Adjust your calorie target and optional budget. We use your goal (lose / maintain / gain) from your profile.',
+    dietTargetKcalLabel: 'Daily calorie target (kcal)',
+    dietBudgetLabel: 'Food budget (optional, BRL/day)',
+    dietBudgetOptional: 'Leave empty if you don’t want budget-based tips.',
+    dietGoalLabel: 'Goal from profile',
+    dietConsumedToday: 'Already logged today (kcal)',
+    dietGenerateBtn: 'Generate suggestions',
+    dietLoading: 'Creating your plan…',
+    dietErrorNoTarget:
+      'Set a daily calorie target in the calculator first, or enter a value below.',
+    dietDisclaimer:
+      'Suggestions are informational only and do not replace a healthcare professional.',
+    dietSlotBreakfast: 'Breakfast',
+    dietSlotLunch: 'Lunch',
+    dietSlotDinner: 'Dinner',
+    dietSlotSnack: 'Snack',
+    dietDessert: 'Healthy dessert',
+    dietBeverages: 'Juices & smoothies',
+    dietTips: 'Tips',
+    dietTotalKcal: 'Approx. total',
+    dietOpenCalculatorHint: 'Open “Edit stats” on your profile slide to update goal and targets.',
   },
   pt: {
     title: 'BiaNutri',
@@ -331,6 +357,7 @@ export const TRANSLATIONS: Record<string, Translation> = {
 
     dietaryRestrictionsTitle: 'Restrições Alimentares',
     dietaryRestrictionsBtn: 'Alergias e Restrições',
+    footerRestrictionsBtn: 'Restrições',
     hasAllergies: 'Você tem alguma alergia?',
     hasIntolerances: 'Você tem alguma intolerância?',
     isDiabetic: 'Você é diabético(a)?',
@@ -361,6 +388,32 @@ export const TRANSLATIONS: Record<string, Translation> = {
     microRefPotassium: 'Potássio',
     microRefDisclaimer:
       'Valores orientativos; necessidades variam por idade, gestação e condições de saúde. Não substitui orientação profissional.',
+
+    dietSuggestionsBtn: 'Plano do dia',
+    dietSuggestionsTitle: 'Sugestões para hoje',
+    dietSuggestionsSubtitle:
+      'Ajuste a meta de calorias e, se quiser, o orçamento do dia. Usamos seu objetivo (perder / manter / ganhar) do perfil.',
+    dietTargetKcalLabel: 'Meta de calorias do dia (kcal)',
+    dietBudgetLabel: 'Orçamento alimentação (opcional, R$/dia)',
+    dietBudgetOptional: 'Deixe em branco para não filtrar por preço.',
+    dietGoalLabel: 'Objetivo no perfil',
+    dietConsumedToday: 'Já registrado hoje (kcal)',
+    dietGenerateBtn: 'Gerar sugestões',
+    dietLoading: 'Montando seu cardápio…',
+    dietErrorNoTarget:
+      'Defina uma meta de calorias na calculadora ou informe um valor abaixo.',
+    dietDisclaimer:
+      'Sugestões informativas; não substituem nutricionista ou médico.',
+    dietSlotBreakfast: 'Café da manhã',
+    dietSlotLunch: 'Almoço',
+    dietSlotDinner: 'Jantar',
+    dietSlotSnack: 'Lanche',
+    dietDessert: 'Sobremesa saudável',
+    dietBeverages: 'Sucos e vitaminas',
+    dietTips: 'Dicas',
+    dietTotalKcal: 'Total aproximado',
+    dietOpenCalculatorHint:
+      'Use “Editar Dados” no slide de perfil para atualizar objetivo e metas.',
   }
 };
 
