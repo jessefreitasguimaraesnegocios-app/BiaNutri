@@ -103,6 +103,8 @@ function App() {
   } | null>(null);
   const [accessStatus, setAccessStatus] = useState<AccessStatus | null>(null);
   const [hasSubscription, setHasSubscription] = useState(false);
+  /** E-mail em admin_emails (check-admin); não precisa ver slide de planos */
+  const [isAdminUser, setIsAdminUser] = useState(false);
   const [isCheckingAccess, setIsCheckingAccess] = useState(true);
   const [paymentReturn, setPaymentReturn] = useState<'success' | 'failure' | null>(null);
   const [showNotSubscriberAfterVerify, setShowNotSubscriberAfterVerify] = useState(false);
@@ -113,6 +115,8 @@ function App() {
   const [trialDisplayRemainingSeconds, setTrialDisplayRemainingSeconds] = useState(0);
 
   const texts = TRANSLATIONS[lang];
+
+  const hidePlansCarouselSlide = hasSubscription || isAdminUser;
 
   // Função helper para navegação que sempre atualiza previousView
   const navigateToView = (newView: 'home' | 'results' | 'history' | 'dayDetails' | 'todayFoods' | 'dietSuggestions') => {
@@ -192,6 +196,7 @@ function App() {
       setProfile(null);
       setAccessStatus(null);
       setHasSubscription(false);
+      setIsAdminUser(false);
       setIsCheckingAccess(false);
       return;
     }
@@ -208,6 +213,7 @@ function App() {
       setIsCheckingAccess(true);
       try {
         const isAdmin = await checkIsAdmin();
+        if (!cancelled) setIsAdminUser(isAdmin);
         if (isAdmin) {
           if (!cancelled) {
             setAccessStatus('allowed');
@@ -304,7 +310,7 @@ function App() {
       if (!el) return false;
       const slideWidth = el.offsetWidth || el.clientWidth;
       if (slideWidth > 0) {
-        el.scrollLeft = slideWidth;
+        el.scrollLeft = hidePlansCarouselSlide ? 0 : slideWidth;
         hasScrolledToHomeRef.current = true;
         return true;
       }
@@ -316,7 +322,16 @@ function App() {
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, [userId, accessStatus]);
+  }, [userId, accessStatus, hidePlansCarouselSlide]);
+
+  // Assinatura/admin ativos depois do primeiro scroll: sem slide de planos, home vira o 1º painel
+  useEffect(() => {
+    if (!userId || accessStatus !== 'allowed' || !hidePlansCarouselSlide) return;
+    const el = carouselRef.current;
+    if (!el) return;
+    const w = el.offsetWidth || el.clientWidth;
+    if (w > 0) el.scrollLeft = 0;
+  }, [userId, accessStatus, hidePlansCarouselSlide]);
 
   // Carregar apenas dados do usuário atual (chave com userId). Sem fallback em chave legada para não misturar dados entre usuários.
   useEffect(() => {
@@ -2138,45 +2153,46 @@ function App() {
         }}
       />
 
-      {/* Carrossel: slide 0 = Planos, slide 1 = Home, slide 2 = Jejum. Inicia na Home. */}
+      {/* Carrossel: com planos = slide 0 Planos, 1 Home, 2 Jejum. Assinantes/admin: só Home + Jejum. */}
       <div
         ref={carouselRef}
         className="flex-1 min-h-0 w-full overflow-x-auto overflow-y-hidden flex snap-x snap-mandatory scroll-smooth touch-pan-x"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
-        {/* Slide 0 (esquerda): Planos + cronômetro do trial */}
-        <div className="flex-shrink-0 w-full min-w-full snap-start flex flex-col overflow-y-auto">
-          <PlansCarouselSlide
-            userId={userId!}
-            userEmail={session?.user?.email ?? undefined}
-            theme={theme}
-            lang={lang}
-            showTrialSection={showTrialCountdown}
-            showTrialCountdown={showTrialCountdown}
-            trialDisplayRemainingSeconds={trialDisplayRemainingSeconds}
-            trialMinutes={TRIAL_MINUTES}
-            profileTrialUsedAt={profile?.trial_used_at ?? null}
-            onVerifySubscription={async () => {
-              try {
-                await syncSubscriptionFromMP(userId!);
-                const p = await getProfile(userId!);
-                setProfile(p);
-                const result = await getAccessStatus(userId!, p);
-                setAccessStatus(result.status);
-                setHasSubscription(!!result.hasSubscription);
-                if (result.remaining_seconds != null) setTrialDisplayRemainingSeconds(Math.max(0, result.remaining_seconds));
-                setPaymentReturn(null);
-              } catch (e) {
-                console.error('Erro ao verificar assinatura:', e);
-              }
-            }}
-          />
-          <p className="text-center text-xs text-slate-400 dark:text-slate-500 py-2 px-2">
-            {lang === 'pt' ? 'Deslize para a direita → para ver o app' : 'Swipe right → to see the app'}
-          </p>
-        </div>
+        {!hidePlansCarouselSlide && (
+          <div className="flex-shrink-0 w-full min-w-full snap-start flex flex-col overflow-y-auto">
+            <PlansCarouselSlide
+              userId={userId!}
+              userEmail={session?.user?.email ?? undefined}
+              theme={theme}
+              lang={lang}
+              showTrialSection={showTrialCountdown}
+              showTrialCountdown={showTrialCountdown}
+              trialDisplayRemainingSeconds={trialDisplayRemainingSeconds}
+              trialMinutes={TRIAL_MINUTES}
+              profileTrialUsedAt={profile?.trial_used_at ?? null}
+              onVerifySubscription={async () => {
+                try {
+                  await syncSubscriptionFromMP(userId!);
+                  const p = await getProfile(userId!);
+                  setProfile(p);
+                  const result = await getAccessStatus(userId!, p);
+                  setAccessStatus(result.status);
+                  setHasSubscription(!!result.hasSubscription);
+                  if (result.remaining_seconds != null) setTrialDisplayRemainingSeconds(Math.max(0, result.remaining_seconds));
+                  setPaymentReturn(null);
+                } catch (e) {
+                  console.error('Erro ao verificar assinatura:', e);
+                }
+              }}
+            />
+            <p className="text-center text-xs text-slate-400 dark:text-slate-500 py-2 px-2">
+              {lang === 'pt' ? 'Deslize para a direita → para ver o app' : 'Swipe right → to see the app'}
+            </p>
+          </div>
+        )}
 
-        {/* Slide 1 (centro): Home (trial strip + conteúdo principal) */}
+        {/* Home (centro se houver planos; senão primeiro painel) */}
         <div className="flex-shrink-0 w-full min-w-full snap-start flex flex-col overflow-y-auto">
           {showTrialCountdown && (
             <div className="max-w-md mx-auto px-4 pt-1 pb-2 flex-shrink-0">
@@ -2224,7 +2240,13 @@ function App() {
             {view === 'dietSuggestions' && renderDietSuggestions()}
           </main>
           <p className="text-center text-xs text-slate-400 dark:text-slate-500 py-1 px-2 flex-shrink-0 mt-auto">
-            {lang === 'pt' ? '← Planos | Jejum →' : '← Plans | Fasting →'}
+            {hidePlansCarouselSlide
+              ? lang === 'pt'
+                ? 'Jejum →'
+                : 'Fasting →'
+              : lang === 'pt'
+                ? '← Planos | Jejum →'
+                : '← Plans | Fasting →'}
           </p>
         </div>
 
@@ -2307,12 +2329,20 @@ function App() {
 
       <Footer
         texts={texts}
-        onRestrictions={() => setIsDietaryRestrictionsOpen(true)}
+        onRestrictions={() =>
+          setIsDietaryRestrictionsOpen((open) => !open)
+        }
         onCalendar={() => {
           setPreviousView(view);
           setIsCalendarOpen(true);
         }}
-        onDietSuggestions={() => navigateToView('dietSuggestions')}
+        onDietSuggestions={() => {
+          if (view === 'dietSuggestions') {
+            goBack();
+          } else {
+            navigateToView('dietSuggestions');
+          }
+        }}
       />
 
       <CalendarModal
