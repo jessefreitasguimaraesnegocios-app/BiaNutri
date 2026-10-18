@@ -18,6 +18,11 @@ import NutrientTargetsCard from './components/NutrientTargetsCard';
 import CalendarModal from './components/CalendarModal';
 import DayDetailModal from './components/DayDetailModal';
 import WaterTracker from './components/WaterTracker';
+import AtalhosDescricaoAlimento, {
+  detalhesDescricaoVazios,
+  montarDescricaoAnalise,
+  type DetalhesDescricaoAlimento,
+} from './components/AtalhosDescricaoAlimento';
 
 import CompanionContainer from './components/CompanionContainer';
 import InstallPrompt from './components/InstallPrompt';
@@ -88,6 +93,7 @@ function App() {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [showDescModal, setShowDescModal] = useState(false);
   const [userDescription, setUserDescription] = useState('');
+  const [detalhesDescricao, setDetalhesDescricao] = useState<DetalhesDescricaoAlimento>(detalhesDescricaoVazios);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   // Refs for file input
@@ -441,6 +447,7 @@ function App() {
 
     setPendingFile(file);
     setUserDescription('');
+    setDetalhesDescricao(detalhesDescricaoVazios());
     setShowDescModal(true);
 
     // Reset input value so same file can be selected again if cancelled
@@ -464,7 +471,8 @@ function App() {
       const mimeType = pendingFile.type || 'image/jpeg';
       console.log('Chamando analyzeFoodImage com mimeType:', mimeType);
       
-      const mealAnalysis = await analyzeFoodImage(base64Data, lang, userDescription, mimeType);
+      const descricaoCompleta = montarDescricaoAnalise(userDescription, detalhesDescricao);
+      const mealAnalysis = await analyzeFoodImage(base64Data, lang, descricaoCompleta, mimeType);
       console.log('Análise concluída:', mealAnalysis);
       
       setCurrentMeal(mealAnalysis);
@@ -522,6 +530,8 @@ function App() {
     setShowDescModal(false);
     setPendingFile(null);
     setPreviewUrl(null);
+    setUserDescription('');
+    setDetalhesDescricao(detalhesDescricaoVazios());
   };
 
   const handleSaveToHistory = () => {
@@ -741,17 +751,17 @@ function App() {
 
           <button
             onClick={triggerCamera}
-            className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-4 px-6 rounded-xl flex items-center justify-center gap-3 transition-transform active:scale-95 shadow-lg shadow-brand-500/30"
+            className="btn-vivo w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-4 px-6 rounded-xl flex items-center justify-center gap-3 shadow-lg shadow-brand-500/30"
           >
-            <Camera size={24} />
+            <Camera size={24} className="icone-vivo icone-respirar" />
             <span>{texts.scanButton}</span>
           </button>
 
           <button
             onClick={triggerGallery}
-            className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold py-4 px-6 rounded-xl flex items-center justify-center gap-3 transition-colors"
+            className="btn-vivo w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold py-4 px-6 rounded-xl flex items-center justify-center gap-3"
           >
-            <Upload size={24} />
+            <Upload size={24} className="icone-vivo" />
             <span>{texts.uploadButton}</span>
           </button>
 
@@ -2294,6 +2304,12 @@ function App() {
                   autoFocus
                 />
               </div>
+
+              <AtalhosDescricaoAlimento
+                lang={lang}
+                detalhes={detalhesDescricao}
+                onChange={setDetalhesDescricao}
+              />
 
               <button
                 onClick={handleAnalyzeConfirm}

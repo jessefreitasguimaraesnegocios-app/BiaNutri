@@ -103,6 +103,30 @@ const PandaInner: React.FC<PandaInnerProps> = ({ scene, animations, animation, s
 
         const t = state.clock.getElapsedTime() + randomOffset;
         const pointer = state.pointer; // Normalized [-1, 1]
+        const baseY = position[1];
+        let pulo = Math.sin(t * 1.8) * 0.03;
+        let inclinacao = Math.sin(t * 1.1) * 0.045;
+
+        if (animation === 'Happy' || animation === 'Success') {
+            pulo = Math.abs(Math.sin(t * 6)) * 0.14;
+            inclinacao = Math.sin(t * 7) * 0.1;
+        } else if (animation === 'Walk') {
+            pulo = Math.abs(Math.sin(t * 8)) * 0.07;
+            inclinacao = Math.sin(t * 8) * 0.08;
+        } else if (animation === 'Eat') {
+            pulo = Math.abs(Math.sin(t * 9)) * 0.05;
+            inclinacao = 0.06;
+        } else if (animation === 'Sad' || animation === 'Error' || animation === 'LowHealth') {
+            pulo = Math.sin(t * 0.7) * 0.015;
+            inclinacao = 0.1;
+        } else if (animation === 'Thinking') {
+            pulo = Math.sin(t * 1.2) * 0.02;
+            inclinacao = Math.sin(t * 1.5) * 0.12;
+        }
+
+        group.current.position.y = baseY + pulo;
+        group.current.rotation.z = MathUtils.lerp(group.current.rotation.z, inclinacao * 0.45, 0.08);
+        group.current.rotation.y = MathUtils.lerp(group.current.rotation.y, 0, 0.06);
 
         // --- 1. GLOBAL ALIVENESS ---
 
@@ -306,7 +330,7 @@ const PandaInner: React.FC<PandaInnerProps> = ({ scene, animations, animation, s
 
 const PandaGLB = ({ animation, url }: { animation: string, url: string }) => {
     const { scene, animations } = useGLTF(url);
-    return <PandaInner scene={scene} animations={animations} animation={animation} scale={1.1} position={[0, -0.8, 0]} />;
+    return <PandaInner scene={scene} animations={animations} animation={animation} scale={0.86} position={[0, -1.15, 0]} />;
 };
 
 const PandaFBX = ({ animation, url }: { animation: string, url: string }) => {

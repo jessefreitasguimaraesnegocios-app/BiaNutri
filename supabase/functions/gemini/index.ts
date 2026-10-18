@@ -195,7 +195,21 @@ Return ONLY the JSON object, nothing else.`;
 
     // Adicionar contexto do usuário se fornecido
     if (userDescription?.trim()) {
-      promptText += `\n\nUser provided context: "${userDescription}"\nUse this information to help identify foods, but still identify ALL items visible in the image.`;
+      promptText += `
+
+USER FACTS (highest priority for calories and macros):
+"""
+${userDescription.trim()}
+"""
+
+When the user adds any extra detail, you MUST use it:
+- Never ignore weight, portion size, cooking method, ingredients, sauce, or the free-text description.
+- If a weight in grams is given, calculate calories and macros for THAT exact weight, not a guessed serving from the photo.
+- If a portion size is given, scale the estimate to that portion.
+- If a cooking method is given, use its calorie density (fried, breaded, or sauced is higher than grilled, steamed, boiled, or raw).
+- If ingredients or sauce are listed, add their calories even when they are hard to see.
+- The photo identifies which foods are present. The user's facts decide quantities and the calorie total.
+- Still list every visible food.`;
     }
 
     // ============================================

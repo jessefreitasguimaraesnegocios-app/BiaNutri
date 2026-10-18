@@ -11,7 +11,7 @@ interface FooterProps {
 
 /** Botões laterais: mesmo “card” (borda, sombra, altura, cantos). */
 const footerSideCardBase =
-  'flex-1 min-w-0 flex flex-col sm:flex-row items-center justify-center gap-1.5 px-3 py-3 rounded-2xl border shadow-sm min-h-[3.25rem] font-semibold text-[10px] sm:text-xs transition-colors active:scale-[0.98]';
+  'btn-vivo flex-1 min-w-0 flex flex-col sm:flex-row items-center justify-center gap-1.5 px-3 py-3 rounded-2xl border shadow-sm min-h-[3.25rem] font-semibold text-[10px] sm:text-xs';
 
 const footerRestrictionsCard =
   `${footerSideCardBase} border-red-200 dark:border-red-900/50 bg-red-50/90 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/50`;
@@ -34,7 +34,7 @@ const Footer: React.FC<FooterProps> = ({
           className={footerRestrictionsCard}
           aria-label={texts.dietaryRestrictionsBtn}
         >
-          <ShieldAlert size={18} className="shrink-0" aria-hidden />
+          <ShieldAlert size={18} className="icone-vivo shrink-0" aria-hidden />
           <span className="truncate text-center leading-tight max-w-[5rem] sm:max-w-none">
             {texts.footerRestrictionsBtn}
           </span>
@@ -43,10 +43,10 @@ const Footer: React.FC<FooterProps> = ({
         <button
           type="button"
           onClick={onCalendar}
-          className="flex-shrink-0 flex items-center justify-center gap-1.5 px-4 sm:px-6 py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-semibold rounded-full shadow-lg shadow-brand-500/30 transition-all active:scale-95 text-sm"
+          className="btn-vivo flex-shrink-0 flex items-center justify-center gap-1.5 px-4 sm:px-6 py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-semibold rounded-full shadow-lg shadow-brand-500/30 text-sm"
           aria-label={texts.calendar}
         >
-          <Calendar size={20} aria-hidden />
+          <Calendar size={20} className="icone-vivo" aria-hidden />
           <span className="hidden sm:inline">{texts.calendar}</span>
         </button>
 
@@ -56,7 +56,7 @@ const Footer: React.FC<FooterProps> = ({
           className={footerDietCard}
           aria-label={texts.dietSuggestionsBtn}
         >
-          <Sparkles size={18} className="shrink-0" aria-hidden />
+          <Sparkles size={18} className="icone-vivo shrink-0" aria-hidden />
           <span className="truncate text-center leading-tight max-w-[5rem] sm:max-w-none">
             {texts.dietSuggestionsBtn}
           </span>

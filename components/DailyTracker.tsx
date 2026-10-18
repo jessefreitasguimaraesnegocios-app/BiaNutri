@@ -29,7 +29,7 @@ const DailyTracker: React.FC<DailyTrackerProps> = ({ current, target, texts, onC
   return (
     <div 
       onClick={onClick}
-      className={`relative overflow-hidden rounded-2xl p-5 border cursor-pointer transition-all ${isOver ? 'border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-900/10' : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm'}`}
+      className={`cartao-vivo relative overflow-hidden rounded-2xl p-5 border cursor-pointer ${isOver ? 'border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-900/10' : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm'}`}
     >
       <div className="flex justify-between items-start mb-2">
         <div>

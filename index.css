@@ -50,3 +50,66 @@
 .animate-promotion-pulse {
   animation: promotion-pulse 2.2s ease-in-out infinite;
 }
+
+@keyframes icone-flutuar {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes icone-respirar {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+
+.btn-vivo {
+  transition: transform 0.22s cubic-bezier(0.34, 1.45, 0.64, 1), box-shadow 0.22s ease, background-color 0.2s ease;
+}
+
+.btn-vivo:hover {
+  transform: translateY(-2px) scale(1.03);
+}
+
+.btn-vivo:active {
+  transform: translateY(1px) scale(0.96);
+}
+
+.icone-vivo {
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.btn-vivo:hover .icone-vivo,
+.btn-vivo:focus-visible .icone-vivo {
+  animation: icone-flutuar 0.55s ease-in-out;
+}
+
+.icone-respirar {
+  animation: icone-respirar 2.2s ease-in-out infinite;
+}
+
+.cartao-vivo {
+  transition: transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow 0.25s ease;
+}
+
+.cartao-vivo:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px -16px rgba(15, 23, 42, 0.45);
+}
+
+.cartao-vivo:active {
+  transform: scale(0.985);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-vivo,
+  .btn-vivo:hover,
+  .btn-vivo:active,
+  .cartao-vivo,
+  .cartao-vivo:hover,
+  .cartao-vivo:active,
+  .icone-vivo,
+  .icone-respirar {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}

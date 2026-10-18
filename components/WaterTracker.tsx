@@ -58,7 +58,7 @@ const WaterTracker: React.FC<WaterTrackerProps> = ({ current, goal, texts, lang,
       {/* Main Tracker Card - Similar to DailyTracker */}
       <div 
         onClick={() => setShowMenu(!showMenu)}
-        className="relative overflow-hidden rounded-2xl p-5 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm cursor-pointer transition-all hover:shadow-md"
+        className="cartao-vivo relative overflow-hidden rounded-2xl p-5 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm cursor-pointer"
         title={statusMessage}
       >
         <div className="flex justify-between items-start mb-2">
@@ -161,7 +161,7 @@ const WaterTracker: React.FC<WaterTrackerProps> = ({ current, goal, texts, lang,
                 <button
                   key={amount}
                   onClick={() => handleQuickAdd(amount)}
-                  className="px-3 py-2 bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100 dark:hover:bg-brand-900/40 text-brand-700 dark:text-brand-400 rounded-lg font-bold text-sm transition-colors active:scale-95"
+                  className="btn-vivo px-3 py-2 bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100 dark:hover:bg-brand-900/40 text-brand-700 dark:text-brand-400 rounded-lg font-bold text-sm"
                 >
                   +{amount}ml
                 </button>

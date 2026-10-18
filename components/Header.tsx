@@ -40,7 +40,7 @@ const Header: React.FC<HeaderProps> = ({ theme, toggleTheme, lang, toggleLang, t
           <div className="relative" ref={colorMenuRef}>
             <button
               onClick={() => setShowColors(!showColors)}
-              className="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center text-white font-bold text-lg hover:scale-105 active:scale-95 transition-transform shadow-md shadow-brand-500/30"
+              className="btn-vivo w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md shadow-brand-500/30"
               aria-label={texts.chooseColor}
             >
               B
@@ -83,21 +83,21 @@ const Header: React.FC<HeaderProps> = ({ theme, toggleTheme, lang, toggleLang, t
         <div className="flex items-center gap-2">
           <button
             onClick={toggleLang}
-            className="p-2 rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors flex items-center gap-1 text-xs font-bold uppercase"
+            className="btn-vivo p-2 rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 flex items-center gap-1 text-xs font-bold uppercase"
           >
             <Languages size={18} />
             {lang}
           </button>
           <button
             onClick={toggleTheme}
-            className="p-2 rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
+            className="btn-vivo p-2 rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
           >
-            {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+            {theme === 'light' ? <Moon size={20} className="icone-vivo" /> : <Sun size={20} className="icone-vivo" />}
           </button>
           {onLogout && (
             <button
               onClick={onLogout}
-              className="p-2 rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
+              className="btn-vivo p-2 rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
               title={lang === 'pt' ? 'Sair' : 'Logout'}
             >
               <LogOut size={20} />
