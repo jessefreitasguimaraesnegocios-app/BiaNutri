@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Clock, Play, Square } from 'lucide-react';
+import { Clock, Play, Square, X } from 'lucide-react';
 import type { FastingCycle, FastingEntry } from '../types';
 import {
   getFastingEntries,
@@ -232,7 +232,10 @@ const texts = {
     lastDays: 'Últimos 14 dias',
     expectedEnd: 'Horário final esperado',
     today: 'Hoje',
+    yesterday: 'Ontem',
     tomorrow: 'Amanhã',
+    save: 'Salvar',
+    endBeforeStart: 'O fim precisa ser depois do início.',
     changeCycle: 'Trocar ciclo',
     customCycle: 'Personalizado',
     apply: 'Aplicar',
@@ -278,7 +281,10 @@ const texts = {
     lastDays: 'Last 14 days',
     expectedEnd: 'Expected end time',
     today: 'Today',
+    yesterday: 'Yesterday',
     tomorrow: 'Tomorrow',
+    save: 'Save',
+    endBeforeStart: 'The end must be after the start.',
     changeCycle: 'Change cycle',
     customCycle: 'Custom',
     apply: 'Apply',
@@ -302,12 +308,157 @@ function getStartTimestampFromTime(timeStr: string, dateStr?: string): number {
   return d.getTime();
 }
 
-function getEndTimestampFromTime(timeStr: string): number {
-  const [h, m] = timeStr.split(':').map(Number);
-  const d = new Date();
-  d.setHours(h, m ?? 0, 0, 0);
-  if (d.getTime() > Date.now()) d.setDate(d.getDate() - 1);
-  return d.getTime();
+function ColunaRolagem({
+  itens,
+  indice,
+  onChange,
+  classe,
+}: {
+  itens: string[];
+  indice: number;
+  onChange: (i: number) => void;
+  classe?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (ref.current) ref.current.scrollTop = indice * ITEM_HEIGHT;
+  }, [indice]);
+
+  const aoRolar = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = window.setTimeout(() => {
+      if (!ref.current) return;
+      const proximo = Math.max(0, Math.min(itens.length - 1, Math.round(ref.current.scrollTop / ITEM_HEIGHT)));
+      onChange(proximo);
+    }, 80);
+  };
+
+  return (
+    <div
+      ref={ref}
+      className={`overflow-y-auto snap-y snap-mandatory scroll-smooth ${classe ?? 'flex-1'}`}
+      style={{ height: ITEM_HEIGHT * VISIBLE_ROWS, scrollbarWidth: 'none' }}
+      onScroll={aoRolar}
+    >
+      <div style={{ height: PADDING_Y }} />
+      {itens.map((item, i) => (
+        <div
+          key={`${item}-${i}`}
+          className={`flex items-center justify-center snap-center whitespace-nowrap ${
+            i === indice ? 'text-white font-bold text-lg' : 'text-slate-400 text-base'
+          }`}
+          style={{ height: ITEM_HEIGHT }}
+        >
+          {item}
+        </div>
+      ))}
+      <div style={{ height: PADDING_Y }} />
+    </div>
+  );
+}
+
+function SeletorEncerrarJejum({
+  inicioMs,
+  dia,
+  horario,
+  invalido,
+  isDark,
+  lang,
+  titulo,
+  salvar,
+  aviso,
+  hoje,
+  ontem,
+  onDia,
+  onHorario,
+  onFechar,
+  onSalvar,
+}: {
+  inicioMs: number;
+  dia: string;
+  horario: string;
+  invalido: boolean;
+  isDark: boolean;
+  lang: 'pt' | 'en';
+  titulo: string;
+  salvar: string;
+  aviso: string;
+  hoje: string;
+  ontem: string;
+  onDia: (chave: string) => void;
+  onHorario: (valor: string) => void;
+  onFechar: () => void;
+  onSalvar: () => void;
+}) {
+  const [hora, minuto] = horario.split(':').map((s) => parseInt(s, 10) || 0);
+  const locale = lang === 'pt' ? 'pt-BR' : 'en-US';
+  const inicioDia = new Date(inicioMs);
+  inicioDia.setHours(0, 0, 0, 0);
+  const hojeData = new Date();
+  hojeData.setHours(0, 0, 0, 0);
+  const dias: { chave: string; rotulo: string }[] = [];
+  for (let cursor = new Date(inicioDia); cursor.getTime() <= hojeData.getTime(); cursor.setDate(cursor.getDate() + 1)) {
+    const copia = new Date(cursor);
+    const chave = dateToKey(copia);
+    const diff = Math.round((hojeData.getTime() - copia.getTime()) / 86400000);
+    let rotulo = copia.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+    if (diff === 0) rotulo = hoje;
+    else if (diff === 1) rotulo = ontem;
+    dias.push({ chave, rotulo });
+  }
+  if (dias.length === 0) dias.push({ chave: dateToKey(hojeData), rotulo: hoje });
+  const indiceDia = Math.max(0, dias.findIndex((item) => item.chave === dia));
+  const horas = Array.from({ length: 24 }, (_, i) => String(i));
+  const minutos = Array.from({ length: 60 }, (_, i) => String(i));
+  const faixa = (ITEM_HEIGHT * VISIBLE_ROWS - ITEM_HEIGHT) / 2;
+
+  const mudarHora = (indice: number) => {
+    onHorario(`${String(indice).padStart(2, '0')}:${String(minuto).padStart(2, '0')}`);
+  };
+  const mudarMinuto = (indice: number) => {
+    onHorario(`${String(hora).padStart(2, '0')}:${String(indice).padStart(2, '0')}`);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className={`relative w-full max-w-md rounded-3xl px-5 pt-5 pb-6 shadow-xl ${isDark ? 'bg-slate-800' : 'bg-slate-900'}`}>
+        <button
+          type="button"
+          onClick={onFechar}
+          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-700/80 text-slate-300 flex items-center justify-center"
+          aria-label="Fechar"
+        >
+          <X size={16} />
+        </button>
+        <p className="text-center text-white font-bold text-lg leading-tight px-10 mb-4">{titulo}</p>
+        <div className="relative">
+          <div
+            className="absolute left-0 right-0 rounded-lg bg-slate-700/80 pointer-events-none"
+            style={{ top: faixa, height: ITEM_HEIGHT }}
+          />
+          <div className="relative flex">
+            <ColunaRolagem
+              itens={dias.map((item) => item.rotulo)}
+              indice={indiceDia}
+              onChange={(i) => onDia(dias[i]?.chave ?? dia)}
+            />
+            <ColunaRolagem itens={horas} indice={hora} onChange={mudarHora} />
+            <ColunaRolagem itens={minutos} indice={minuto} onChange={mudarMinuto} />
+          </div>
+        </div>
+        {invalido && <p className="text-center text-sm font-medium text-red-400 mt-3">{aviso}</p>}
+        <button
+          type="button"
+          onClick={onSalvar}
+          className="mt-5 w-full py-4 rounded-full font-bold text-lg text-white bg-green-500 hover:bg-green-600 active:scale-[0.98] transition-transform"
+        >
+          {salvar}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function formatExpectedEnd(
@@ -356,7 +507,8 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
   const [showCustomCycleInput, setShowCustomCycleInput] = useState(false);
   const [switchCustomHours, setSwitchCustomHours] = useState(16);
   const [showEndTimeModal, setShowEndTimeModal] = useState(false);
-  const [endTimeChoice, setEndTimeChoice] = useState<'now' | 'past'>('now');
+  const [endDateKey, setEndDateKey] = useState(() => dateToKey(new Date()));
+  const [endTimeInvalid, setEndTimeInvalid] = useState(false);
   const [endTimePast, setEndTimePast] = useState(() => {
     const d = new Date();
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -458,8 +610,9 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
 
   const handleOpenEndModal = () => {
     const d = new Date();
+    setEndDateKey(dateToKey(d));
     setEndTimePast(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
-    setEndTimeChoice('now');
+    setEndTimeInvalid(false);
     setShowEndTimeModal(true);
   };
 
@@ -487,7 +640,15 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
 
   const handleConfirmEndFast = () => {
     if (!currentFast) return;
-    const ts = endTimeChoice === 'now' ? Date.now() : getEndTimestampFromTime(endTimePast);
+    const [ano, mes, dia] = endDateKey.split('-').map(Number);
+    const [hora, minuto] = endTimePast.split(':').map(Number);
+    let ts = new Date(ano, (mes ?? 1) - 1, dia, hora ?? 0, minuto ?? 0, 0, 0).getTime();
+    if (ts > Date.now()) ts = Date.now();
+    if (ts <= currentFast.startTimestamp) {
+      setEndTimeInvalid(true);
+      return;
+    }
+    setEndTimeInvalid(false);
     handleEndFast(ts);
   };
 
@@ -824,54 +985,29 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
 
       {/* Modal: quando encerrou o jejum */}
       {showEndTimeModal && currentFast && (
-        <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className={`w-full max-w-sm rounded-2xl p-6 shadow-xl ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
-            <p className={`font-bold text-lg mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>{t.endTimeChoice}</p>
-            <div className="flex gap-2 mb-4">
-              <button
-                onClick={() => setEndTimeChoice('now')}
-                className={`flex-1 py-3 rounded-xl font-bold transition-all ${
-                  endTimeChoice === 'now' ? 'bg-brand-500 text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-700'
-                }`}
-              >
-                {t.useCurrentTime}
-              </button>
-              <button
-                onClick={() => setEndTimeChoice('past')}
-                className={`flex-1 py-3 rounded-xl font-bold transition-all ${
-                  endTimeChoice === 'past' ? 'bg-brand-500 text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-700'
-                }`}
-              >
-                {t.endedAt}
-              </button>
-            </div>
-            {endTimeChoice === 'past' && (
-              <div className="mb-4">
-                <input
-                  type="time"
-                  value={endTimePast}
-                  onChange={(e) => setEndTimePast(e.target.value)}
-                  className={`w-full p-3 rounded-xl font-mono text-lg border-0 ${isDark ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-900'}`}
-                />
-              </div>
-            )}
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowEndTimeModal(false)}
-                className="flex-1 py-3 rounded-xl font-bold border-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200"
-              >
-                {t.cancel}
-              </button>
-              <button
-                onClick={handleConfirmEndFast}
-                className="flex-1 py-3 rounded-xl font-bold bg-red-500 hover:bg-red-600 text-white flex items-center justify-center gap-2"
-              >
-                <Square size={18} />
-                {t.confirmEnd}
-              </button>
-            </div>
-          </div>
-        </div>
+        <SeletorEncerrarJejum
+          inicioMs={currentFast.startTimestamp}
+          dia={endDateKey}
+          horario={endTimePast}
+          invalido={endTimeInvalid}
+          isDark={isDark}
+          lang={lang}
+          titulo={t.endTimeChoice}
+          salvar={t.save}
+          aviso={t.endBeforeStart}
+          hoje={t.today}
+          ontem={t.yesterday}
+          onDia={(chave) => {
+            setEndTimeInvalid(false);
+            setEndDateKey(chave);
+          }}
+          onHorario={(valor) => {
+            setEndTimeInvalid(false);
+            setEndTimePast(valor);
+          }}
+          onFechar={() => setShowEndTimeModal(false)}
+          onSalvar={handleConfirmEndFast}
+        />
       )}
 
       <p className="text-center text-xs text-slate-400 dark:text-slate-500 py-2">{t.swipeHint}</p>
