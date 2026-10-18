@@ -222,9 +222,6 @@ const texts = {
     totalMonth: 'Total este mês',
     totalAll: 'Total geral',
     close: 'Fechar',
-    timeSimulatorTitle: 'Simulador de Horário',
-    fastOfHours: 'Jejum de',
-    whenStarts: 'Início',
     noData: 'Nenhum jejum neste dia.',
     swipeHint: '← Voltar para o app',
     recentFasts: 'Últimos jejums',
@@ -271,9 +268,6 @@ const texts = {
     totalMonth: 'Total this month',
     totalAll: 'Total overall',
     close: 'Close',
-    timeSimulatorTitle: 'Time Simulator',
-    fastOfHours: 'Fast of',
-    whenStarts: 'Start',
     noData: 'No fast on this day.',
     swipeHint: '← Back to app',
     recentFasts: 'Recent fasts',
@@ -346,7 +340,6 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
   const [startTime, setStartTime] = useState('20:00');
   const [endTime, setEndTime] = useState('12:00');
   const [customHours, setCustomHours] = useState(16);
-  const [simulatorHours, setSimulatorHours] = useState(16);
   const [entries, setEntries] = useState<FastingEntry[]>([]);
   const [currentFast, setCurrentFastState] = useState<CurrentFast | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -400,10 +393,7 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
       const opt = CYCLES.find((x) => x.id === c);
       if (opt) {
         setEndTime(suggestedEndTime(startTime, opt.hours));
-        setSimulatorHours(opt.hours);
       }
-    } else {
-      setSimulatorHours(customHours);
     }
   };
 
@@ -420,15 +410,6 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
   const handleCustomHoursChange = (v: number) => {
     setCustomHours(v);
     setEndTime(suggestedEndTime(startTime, v));
-    setSimulatorHours(v);
-  };
-
-  const handleSimulatorHoursChange = (v: number) => {
-    setSimulatorHours(v);
-    if (cycle === 'custom') {
-      setCustomHours(v);
-      setEndTime(suggestedEndTime(startTime, v));
-    }
   };
 
   const computedHours =
@@ -617,8 +598,6 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
           onEndTimeChange={setEndTime}
           customHours={customHours}
           onCustomHoursChange={handleCustomHoursChange}
-          simulatorHours={simulatorHours}
-          onSimulatorHoursChange={handleSimulatorHoursChange}
           computedHours={computedHours}
           currentFast={currentFast}
           onCycleChangeActive={handleChangeCycle}
@@ -629,7 +608,7 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
           expectedEndStr={expectedEndStr}
           isDark={isDark}
           lang={lang}
-          t={{ cycle: t.cycle, start: t.start, end: t.end, hours: t.hours, expectedEnd: t.expectedEnd, changeCycle: t.changeCycle, customCycle: t.customCycle, apply: t.apply, timeSimulatorTitle: t.timeSimulatorTitle, fastOfHours: t.fastOfHours, whenStarts: t.whenStarts }}
+          t={{ cycle: t.cycle, start: t.start, end: t.end, hours: t.hours, expectedEnd: t.expectedEnd, changeCycle: t.changeCycle, customCycle: t.customCycle, apply: t.apply }}
         />
       </div>
 

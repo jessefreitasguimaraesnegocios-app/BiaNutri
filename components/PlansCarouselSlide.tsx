@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, Zap, Shield, RefreshCw, XCircle } from 'lucide-react';
-import { PLANS, PLANS_ORDER, type PlanId } from '../constants/plans';
+import { PLANS, PLANS_ORDER, formatarDuracaoTeste, formatarTempoRestante, type PlanId } from '../constants/plans';
 import { getSubscriptionBackUrl, getSubscription, cancelSubscription } from '../services/subscriptionService';
 import { useSubscriptionCheckout } from '../hooks/useSubscriptionCheckout';
 
@@ -33,8 +33,7 @@ const texts = {
     error: 'Erro ao abrir checkout. Tente novamente.',
     trialLabel: 'Teste grátis',
     trialOf: 'de',
-    trialMin: 'min',
-    trialYouHave: 'Você tem 30 min de teste grátis',
+    trialYouHave: 'Você tem teste grátis',
     trialEnded: 'Trial encerrado — assine para continuar',
     verifySubscription: 'Verificar assinatura',
     verifying: 'Verificando...',
@@ -60,8 +59,7 @@ const texts = {
     error: 'Error opening checkout. Please try again.',
     trialLabel: 'Free trial',
     trialOf: 'of',
-    trialMin: 'min',
-    trialYouHave: 'You have 30 min free trial',
+    trialYouHave: 'You have a free trial',
     trialEnded: 'Trial ended — subscribe to continue',
     verifySubscription: 'Verify subscription',
     verifying: 'Verifying...',
@@ -179,17 +177,15 @@ const PlansCarouselSlide: React.FC<PlansCarouselSlideProps> = ({
             {showTrialCountdown ? (
               <>
                 <span className="text-2xl font-bold text-brand-700 dark:text-brand-200 tabular-nums tracking-wider">
-                  {String(Math.floor(trialDisplayRemainingSeconds / 60)).padStart(2, '0')}
-                  <span className="text-brand-500/80 mx-1">:</span>
-                  {String(trialDisplayRemainingSeconds % 60).padStart(2, '0')}
+                  {formatarTempoRestante(trialDisplayRemainingSeconds)}
                 </span>
                 <span className="text-sm text-brand-600 dark:text-brand-400 tabular-nums">
-                  {t.trialOf} {trialMinutes} {t.trialMin}
+                  {t.trialOf} {formatarDuracaoTeste(trialMinutes, lang)}
                 </span>
               </>
             ) : (
               <span className="text-sm font-medium text-brand-700 dark:text-brand-300">
-                {profileTrialUsedAt ? t.trialEnded : t.trialYouHave}
+                {profileTrialUsedAt ? t.trialEnded : `${t.trialYouHave}: ${formatarDuracaoTeste(trialMinutes, lang)}`}
               </span>
             )}
           </div>

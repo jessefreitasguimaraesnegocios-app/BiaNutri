@@ -6,7 +6,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
-const TRIAL_MINUTES = Math.max(1, parseInt(Deno.env.get("TRIAL_MINUTES") ?? "30", 10));
+const TRIAL_MINUTES = Math.max(1, parseInt(Deno.env.get("TRIAL_MINUTES") ?? "720", 10));
 const TRIAL_SECONDS_LIMIT = TRIAL_MINUTES * 60;
 
 function computeRemaining(profile: {

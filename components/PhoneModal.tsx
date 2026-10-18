@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Smartphone, Loader2, ArrowRight, LogOut } from 'lucide-react';
 import { setPhone as savePhone, checkPhoneAlreadyUsed, normalizePhone } from '../services/subscriptionService';
-import { TRIAL_MINUTES } from '../constants/plans';
+import { TRIAL_MINUTES, formatarDuracaoTeste } from '../constants/plans';
 
 /** Aplica máscara BR: (XX) XXXXX-XXXX celular ou (XX) XXXX-XXXX fixo */
 function formatPhoneMask(value: string): string {
@@ -32,7 +32,7 @@ interface PhoneModalProps {
 const getTexts = (trialMinutes: number) => ({
   pt: {
     title: 'Quase lá!',
-    subtitle: `Informe seu número de telefone para começar seu período de teste de ${trialMinutes} minutos.`,
+    subtitle: `Informe seu número de telefone para começar seu período de teste de ${formatarDuracaoTeste(trialMinutes, 'pt')}.`,
     placeholder: '(31) 99999-9999',
     label: 'Telefone (com DDD)',
     button: 'Continuar',
@@ -43,7 +43,7 @@ const getTexts = (trialMinutes: number) => ({
   },
   en: {
     title: 'Almost there!',
-    subtitle: `Enter your phone number to start your ${trialMinutes}-minute free trial.`,
+    subtitle: `Enter your phone number to start your ${formatarDuracaoTeste(trialMinutes, 'en')} free trial.`,
     placeholder: '(31) 99999-9999',
     label: 'Phone (with area code)',
     button: 'Continue',

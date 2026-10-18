@@ -38,7 +38,7 @@ import {
 } from './services/subscriptionService';
 import type { AccessStatus } from './types';
 import type { Session } from '@supabase/supabase-js';
-import { TRIAL_SECONDS_LIMIT, TRIAL_MINUTES } from './constants/plans';
+import { TRIAL_SECONDS_LIMIT, TRIAL_MINUTES, formatarTempoRestante } from './constants/plans';
 
 import { getAvailablePets, PetDefinition } from './utils/petRegistry';
 import { getDietaryAlerts } from './utils/dietaryAlerts';
@@ -2204,12 +2204,10 @@ function App() {
                   {!profile?.trial_used_at ? (
                     <>
                       <span className="text-lg font-bold text-brand-700 dark:text-brand-200 tabular-nums tracking-wider" aria-label={lang === 'pt' ? 'Tempo restante' : 'Time remaining'}>
-                        {String(Math.floor(trialDisplayRemainingSeconds / 60)).padStart(2, '0')}
-                        <span className="text-brand-500/80 mx-0.5">:</span>
-                        {String(trialDisplayRemainingSeconds % 60).padStart(2, '0')}
+                        {formatarTempoRestante(trialDisplayRemainingSeconds)}
                       </span>
                       <span className="text-xs text-brand-600 dark:text-brand-400 tabular-nums">
-                        {lang === 'pt' ? `min restantes` : `min left`}
+                        {lang === 'pt' ? 'restantes' : 'left'}
                       </span>
                     </>
                   ) : (

@@ -2,7 +2,7 @@
 
 ## O que foi implementado
 
-1. **Trial de 30 minutos** (tempo acumulado de uso dentro do app; quando o usuário fecha o app o tempo para).
+1. **Trial de 12 horas** (tempo corrido a partir do início; fechar o app não pausa o cronômetro).
 2. **Telefone obrigatório** antes de usar o trial; o mesmo número não pode usar o trial duas vezes (em contas diferentes).
 3. **Paywall** com 3 planos após o fim do trial:
    - 1 mês: R$ 39,90
@@ -42,6 +42,7 @@ No **Dashboard do Supabase** → **Project Settings** → **Edge Functions** →
 | Nome                         | Valor                          |
 |-----------------------------|---------------------------------|
 | `MERCADOPAGO_ACCESS_TOKEN` | Access Token (produção) do MP  |
+| `TRIAL_MINUTES`            | `720` (12 horas de teste grátis) |
 
 (O `SUPABASE_URL`, `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` já existem no ambiente das Edge Functions.)
 
@@ -80,8 +81,8 @@ O checkout já usa as URLs da própria página do app com `?payment=success` e `
 1. Usuário faz login/cadastro.
 2. Se não tiver **telefone** no perfil → tela para informar telefone (só continua após salvar).
 3. Se o **telefone já tiver usado trial** em outra conta → mensagem de erro e não inicia trial.
-4. Com telefone válido (e não usado) → **trial de 30 min** inicia; o app conta o tempo a cada 15 s enquanto estiver em uso.
-5. Ao atingir **30 min** → trial encerra; na próxima abertura aparece a **paywall** (3 planos).
+4. Com telefone válido (e não usado) → **trial de 12 horas** inicia; o cronômetro segue o tempo real desde o início.
+5. Ao atingir **12 horas** → trial encerra; na próxima abertura aparece a **paywall** (3 planos).
 6. Usuário escolhe plano → abre o **Checkout Pro** do Mercado Pago.
 7. Após **pagamento aprovado** → MP chama o webhook → a Edge Function grava/atualiza `subscriptions` → o app considera assinatura ativa e libera o conteúdo.
 

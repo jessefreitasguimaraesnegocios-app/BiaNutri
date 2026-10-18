@@ -1,11 +1,7 @@
-import React, { useRef, useCallback, useEffect } from 'react';
+import React from 'react';
 import { Clock, Calendar } from 'lucide-react';
 import type { FastingCycle } from '../types';
 import type { CurrentFast } from '../services/fastingService';
-
-const ITEM_HEIGHT_H = 40;
-const VISIBLE_ROWS_H = 5;
-const PADDING_Y_H = ITEM_HEIGHT_H * 2;
 
 const CYCLES: { id: FastingCycle; label: string; shortLabel: string; hours: number; hintPt: string; hintEn: string }[] = [
   { id: '14', label: '14h', shortLabel: '14:10', hours: 14, hintPt: 'Iniciante', hintEn: 'Starter' },
@@ -25,8 +21,6 @@ interface FastingCyclePickerProps {
   onEndTimeChange?: (v: string) => void;
   customHours: number;
   onCustomHoursChange: (v: number) => void;
-  simulatorHours: number;
-  onSimulatorHoursChange: (v: number) => void;
   computedHours: number;
   /** When active fast: current fast and change handler */
   currentFast: CurrentFast | null;
@@ -46,9 +40,6 @@ interface FastingCyclePickerProps {
     expectedEnd: string;
     changeCycle: string;
     apply: string;
-    timeSimulatorTitle?: string;
-    fastOfHours?: string;
-    whenStarts?: string;
     customCycle?: string;
   };
 }
@@ -62,8 +53,6 @@ const FastingCyclePicker: React.FC<FastingCyclePickerProps> = ({
   onEndTimeChange,
   customHours,
   onCustomHoursChange,
-  simulatorHours,
-  onSimulatorHoursChange,
   computedHours,
   currentFast,
   onCycleChangeActive,
@@ -78,37 +67,6 @@ const FastingCyclePicker: React.FC<FastingCyclePickerProps> = ({
 }) => {
   const isActive = !!currentFast;
   const hint = (hintPt: string, hintEn: string) => (lang === 'pt' ? hintPt : hintEn);
-  const hoursScrollRef = useRef<HTMLDivElement>(null);
-  const hoursScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const suggestedEndTime = (start: string, hours: number): string => {
-    const [h, m] = start.split(':').map(Number);
-    let endMinutes = h * 60 + (m ?? 0) + hours * 60;
-    if (endMinutes >= 24 * 60) endMinutes -= 24 * 60;
-    const eh = Math.floor(endMinutes / 60);
-    const em = endMinutes % 60;
-    return `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
-  };
-
-  const scrollHoursTo = useCallback((hour: number) => {
-    if (hoursScrollRef.current) hoursScrollRef.current.scrollTop = (hour - 1) * ITEM_HEIGHT_H;
-  }, []);
-
-  const syncHoursFromScroll = useCallback(() => {
-    if (!hoursScrollRef.current) return;
-    const index = Math.round(hoursScrollRef.current.scrollTop / ITEM_HEIGHT_H);
-    const h = Math.max(1, Math.min(24, index + 1));
-    onSimulatorHoursChange(h);
-  }, [onSimulatorHoursChange]);
-
-  useEffect(() => {
-    if (t.timeSimulatorTitle) scrollHoursTo(simulatorHours);
-  }, [simulatorHours, scrollHoursTo]);
-
-  const handleHoursScroll = useCallback(() => {
-    if (hoursScrollTimeoutRef.current) clearTimeout(hoursScrollTimeoutRef.current);
-    hoursScrollTimeoutRef.current = window.setTimeout(syncHoursFromScroll, 120);
-  }, [syncHoursFromScroll]);
 
   if (isActive) {
     return (
@@ -200,102 +158,6 @@ const FastingCyclePicker: React.FC<FastingCyclePickerProps> = ({
         ))}
       </div>
 
-      {t.timeSimulatorTitle && (
-        <p className={`text-center text-sm font-bold uppercase tracking-wider mt-16 mb-1 ${isDark ? 'text-brand-400' : 'text-brand-600'}`}>
-          {t.timeSimulatorTitle}
-        </p>
-      )}
-      {t.timeSimulatorTitle ? (
-        <div className="space-y-4 mt-6">
-          <div className="space-y-2 flex flex-col items-center">
-            <label className="text-xs font-bold uppercase text-slate-500">
-              {t.fastOfHours} {t.hours}
-            </label>
-            <div className="flex flex-col gap-2 w-full max-w-[200px]">
-              <div
-                className={`flex items-center justify-center py-2 rounded-xl font-mono text-base font-bold ${isDark ? 'bg-slate-700/80 text-white' : 'bg-slate-200/80 text-slate-900'}`}
-                aria-live="polite"
-              >
-                {simulatorHours} {t.hours}
-              </div>
-              <div
-                className="relative flex flex-col overflow-hidden rounded-xl border border-slate-600/50 dark:border-slate-500/50"
-                style={{ height: ITEM_HEIGHT_H * VISIBLE_ROWS_H }}
-              >
-                <div
-                  className="absolute left-0 right-0 top-0 z-10 pointer-events-none"
-                  style={{
-                    height: (ITEM_HEIGHT_H * VISIBLE_ROWS_H - ITEM_HEIGHT_H) / 2,
-                    background: isDark
-                      ? 'linear-gradient(to bottom, rgb(30 41 59) 0%, transparent 100%)'
-                      : 'linear-gradient(to bottom, rgb(248 250 252) 0%, transparent 100%)',
-                  }}
-                />
-                <div
-                  className="absolute left-0 right-0 bottom-0 z-10 pointer-events-none"
-                  style={{
-                    height: (ITEM_HEIGHT_H * VISIBLE_ROWS_H - ITEM_HEIGHT_H) / 2,
-                    background: isDark
-                      ? 'linear-gradient(to top, rgb(30 41 59) 0%, transparent 100%)'
-                      : 'linear-gradient(to top, rgb(248 250 252) 0%, transparent 100%)',
-                  }}
-                />
-                <div
-                  className="absolute left-0 right-0 z-10 pointer-events-none border-2 border-brand-500 rounded-lg"
-                  style={{
-                    top: (ITEM_HEIGHT_H * VISIBLE_ROWS_H - ITEM_HEIGHT_H) / 2,
-                    height: ITEM_HEIGHT_H,
-                  }}
-                />
-                <div
-                  ref={hoursScrollRef}
-                  className="overflow-y-auto overflow-x-hidden snap-y snap-mandatory scroll-smooth"
-                  style={{ height: ITEM_HEIGHT_H * VISIBLE_ROWS_H }}
-                  onScroll={handleHoursScroll}
-                >
-                  <div style={{ height: PADDING_Y_H }} />
-                  {Array.from({ length: 24 }, (_, i) => i + 1).map((h) => (
-                    <div
-                      key={h}
-                      className={`flex items-center justify-center font-mono shrink-0 snap-center ${
-                        simulatorHours === h
-                          ? `text-base font-bold ${isDark ? 'text-white' : 'text-slate-900'}`
-                          : isDark
-                          ? 'text-sm text-slate-300'
-                          : 'text-sm text-slate-600'
-                      }`}
-                      style={{ height: ITEM_HEIGHT_H }}
-                    >
-                      {h}
-                    </div>
-                  ))}
-                  <div style={{ height: PADDING_Y_H }} />
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-xs font-bold uppercase text-slate-500">{t.whenStarts ?? t.start}</label>
-              <input
-                type="time"
-                value={startTime}
-                onChange={(e) => onStartTimeChange(e.target.value)}
-                className={`w-full p-3 rounded-xl font-mono text-lg border-0 ${
-                  isDark ? 'bg-slate-800 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-900'
-                }`}
-              />
-            </div>
-            <div className="space-y-1">
-              <span className="text-xs font-bold uppercase text-slate-500">{t.end}</span>
-              <div className={`p-3 rounded-xl font-mono text-lg ${isDark ? 'bg-slate-800 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-900'}`}>
-                {suggestedEndTime(startTime, simulatorHours)}
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
           <label className="text-xs font-bold uppercase text-slate-500">{t.start}</label>
@@ -341,8 +203,6 @@ const FastingCyclePicker: React.FC<FastingCyclePickerProps> = ({
         <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
           {computedHours.toFixed(1)} {t.hours}
         </p>
-      )}
-        </>
       )}
     </div>
   );

@@ -49,7 +49,7 @@ O app estará em `http://localhost:3000`
 - 📊 Informações nutricionais, histórico, meta de calorias
 - 💧 Rastreamento de água
 - 🧮 Calculadora BMR/TDEE
-- ⏱️ Trial 30 min + paywall (Mercado Pago)
+- ⏱️ Trial de 12 horas + paywall (Mercado Pago)
 - 🎨 Tema claro/escuro, PT/EN
 
 ## 📄 Documentação
