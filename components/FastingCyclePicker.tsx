@@ -150,16 +150,24 @@ const FastingCyclePicker: React.FC<FastingCyclePickerProps> = ({
         <div>
           <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-3">{t.changeCycle}</label>
           <div className="flex flex-wrap gap-2">
-            {CYCLES.filter((c) => c.id !== '1m').map((c) => (
+            {CYCLES.filter((c) => c.id !== '1m').map((c) => {
+              const personalizadoAtivo = c.id === 'custom' && (currentFast?.cycle === 'custom' || showCustomCycleInput);
+              const cicloAtivo = c.id !== 'custom' && currentFast?.cycle === c.id && !showCustomCycleInput;
+              const selecionado = personalizadoAtivo || cicloAtivo;
+              return (
               <button
                 key={c.id}
                 onClick={() => {
-                  if (c.id === 'custom') setShowCustomCycleInput(true);
-                  else onCycleChangeActive(c.id);
+                  if (c.id === 'custom') {
+                    setShowCustomCycleInput(true);
+                  } else {
+                    setShowCustomCycleInput(false);
+                    onCycleChangeActive(c.id);
+                  }
                 }}
                 className={`
                   px-4 py-3 rounded-xl text-sm font-bold transition-all hover:scale-105 active:scale-100
-                  ${currentFast?.cycle === c.id
+                  ${selecionado
                     ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/30'
                     : isDark
                     ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
@@ -169,7 +177,8 @@ const FastingCyclePicker: React.FC<FastingCyclePickerProps> = ({
               >
                 {c.id === 'custom' ? (t.customCycle ?? c.label) : c.label}
               </button>
-            ))}
+              );
+            })}
           </div>
           {showCustomCycleInput && (
             <div className="flex gap-2 items-center mt-4">
