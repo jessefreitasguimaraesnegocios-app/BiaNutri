@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Clock, Calendar } from 'lucide-react';
 import type { FastingCycle } from '../types';
 import type { CurrentFast } from '../services/fastingService';
@@ -42,6 +42,73 @@ interface FastingCyclePickerProps {
     apply: string;
     customCycle?: string;
   };
+}
+
+function lerHorasDigitadas(bruto: string): number | null {
+  const limpo = bruto.trim().replace(',', '.');
+  if (limpo === '' || limpo === '.' || limpo === ':') return null;
+  const comDoisPontos = limpo.match(/^(\d{1,2}):(\d{1,2})$/);
+  if (comDoisPontos) {
+    const horas = Number(comDoisPontos[1]);
+    const minutos = Number(comDoisPontos[2]);
+    if (!Number.isFinite(horas) || !Number.isFinite(minutos) || minutos > 59) return null;
+    return horas + minutos / 60;
+  }
+  const num = Number(limpo);
+  return Number.isFinite(num) ? num : null;
+}
+
+function CampoHorasEditavel({
+  valor,
+  onChange,
+  isDark,
+  classe,
+}: {
+  valor: number;
+  onChange: (v: number) => void;
+  isDark: boolean;
+  classe?: string;
+}) {
+  const [texto, setTexto] = useState(String(valor));
+
+  useEffect(() => {
+    setTexto(String(valor));
+  }, [valor]);
+
+  const aplicar = (bruto: string) => {
+    const num = lerHorasDigitadas(bruto);
+    if (num == null) {
+      setTexto(String(valor));
+      return;
+    }
+    const limitado = Math.min(24, Math.max(0.5, Math.round(num * 100) / 100));
+    setTexto(String(limitado));
+    onChange(limitado);
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={texto}
+      onChange={(e) => {
+        const proximo = e.target.value.replace(/[^\d.,:]/g, '');
+        setTexto(proximo);
+        // Com ":" só aplica no blur, para não trocar 5:40 por 5.67 no meio da digitação
+        if (proximo.includes(':')) return;
+        if (proximo === '' || proximo === '.' || proximo === ',') return;
+        const num = lerHorasDigitadas(proximo);
+        if (num != null && num >= 0.5 && num <= 24) onChange(Math.round(num * 100) / 100);
+      }}
+      onBlur={() => aplicar(texto)}
+      className={
+        classe ??
+        `flex-1 p-3 rounded-xl font-mono text-lg border-0 ${
+          isDark ? 'bg-slate-700 text-white' : 'bg-white dark:bg-slate-700 text-slate-900'
+        }`
+      }
+    />
+  );
 }
 
 const FastingCyclePicker: React.FC<FastingCyclePickerProps> = ({
@@ -106,15 +173,10 @@ const FastingCyclePicker: React.FC<FastingCyclePickerProps> = ({
           </div>
           {showCustomCycleInput && (
             <div className="flex gap-2 items-center mt-4">
-              <input
-                type="number"
-                min={1}
-                max={24}
-                value={switchCustomHours}
-                onChange={(e) => setSwitchCustomHours(Number(e.target.value) || 16)}
-                className={`flex-1 p-3 rounded-xl font-mono text-lg border-0 ${
-                  isDark ? 'bg-slate-700 text-white' : 'bg-white dark:bg-slate-700 text-slate-900'
-                }`}
+              <CampoHorasEditavel
+                valor={switchCustomHours}
+                onChange={setSwitchCustomHours}
+                isDark={isDark}
               />
               <span className="text-sm text-slate-500">{t.hours}</span>
               <button
@@ -174,17 +236,15 @@ const FastingCyclePicker: React.FC<FastingCyclePickerProps> = ({
           <label className="text-xs font-bold uppercase text-slate-500">{t.end}</label>
           {cycle === 'custom' ? (
             <div className="flex gap-2 items-center">
-              <input
-                type="number"
-                min={1}
-                max={24}
-                value={customHours}
-                onChange={(e) => onCustomHoursChange(Number(e.target.value) || 16)}
-                className={`w-full p-3 rounded-xl font-mono text-lg border-0 ${
+              <CampoHorasEditavel
+                valor={customHours}
+                onChange={onCustomHoursChange}
+                isDark={isDark}
+                classe={`w-full p-3 rounded-xl font-mono text-lg border-0 ${
                   isDark ? 'bg-slate-800 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-900'
                 }`}
               />
-              <span className="text-sm text-slate-500">{t.hours}</span>
+              <span className="text-sm text-slate-500 shrink-0">{t.hours}</span>
             </div>
           ) : (
             <input

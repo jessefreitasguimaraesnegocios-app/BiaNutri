@@ -258,7 +258,7 @@ export const TRANSLATIONS: Record<string, Translation> = {
     dietTotalKcal: 'Approx. total',
     dietOpenCalculatorHint: 'Open “Edit stats” on your profile slide to update goal and targets.',
     dietCachedTodayHint:
-      'Today’s plan is saved until midnight. Open anytime — no new request until tomorrow.',
+      'Today’s plan is saved until midnight. Open anytime.',
     dietGenerateLockedBtn: 'New plan after midnight (00:00)',
   },
   pt: {
@@ -418,7 +418,7 @@ export const TRANSLATIONS: Record<string, Translation> = {
     dietOpenCalculatorHint:
       'Use “Editar Dados” no slide de perfil para atualizar objetivo e metas.',
     dietCachedTodayHint:
-      'O plano de hoje fica salvo até a meia-noite. Abra quando quiser — sem novo pedido à API até amanhã.',
+      'O plano de hoje fica salvo até a meia-noite. Abra quando quiser.',
     dietGenerateLockedBtn: 'Novo plano após meia-noite (00:00)',
   }
 };

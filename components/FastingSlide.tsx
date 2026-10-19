@@ -210,7 +210,6 @@ const texts = {
     cancel: 'Cancelar',
     dayLabel: 'Dia',
     timeLabel: 'Horário',
-    useExistingTime: 'Usar horário de jejum anterior',
     goalHit: 'Meta Batida!',
     endFast: 'Encerrar jejum',
     elapsed: 'Tempo de jejum',
@@ -259,7 +258,6 @@ const texts = {
     cancel: 'Cancel',
     dayLabel: 'Day',
     timeLabel: 'Time',
-    useExistingTime: 'Use time from previous fast',
     goalHit: 'Goal hit!',
     endFast: 'End fast',
     elapsed: 'Fasting time',
@@ -554,14 +552,21 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
     if (cycle !== 'custom') {
       const opt = CYCLES.find((x) => x.id === cycle);
       if (opt) setEndTime(suggestedEndTime(v, opt.hours));
-    } else {
-      setEndTime(suggestedEndTime(v, customHours));
+    }
+  };
+
+  const handleEndTimeChange = (v: string) => {
+    setEndTime(v);
+    if (cycle === 'custom') {
+      const horas = hoursBetween(startTime, v);
+      if (horas > 0) setCustomHours(Math.round(horas * 10) / 10);
     }
   };
 
   const handleCustomHoursChange = (v: number) => {
-    setCustomHours(v);
-    setEndTime(suggestedEndTime(startTime, v));
+    const horas = Math.min(24, Math.max(0.5, v));
+    setCustomHours(horas);
+    setEndTime(suggestedEndTime(startTime, horas));
   };
 
   const computedHours =
@@ -756,7 +761,7 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
           startTime={startTime}
           onStartTimeChange={handleStartTimeChange}
           endTime={endTime}
-          onEndTimeChange={setEndTime}
+          onEndTimeChange={handleEndTimeChange}
           customHours={customHours}
           onCustomHoursChange={handleCustomHoursChange}
           computedHours={computedHours}
@@ -883,44 +888,6 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
                     );
                   })()}
                 </div>
-                {(() => {
-                  const minD = new Date();
-                  minD.setDate(minD.getDate() - 7);
-                  const minStr = dateToKey(minD);
-                  const recentEntries = entries
-                    .filter((e) => e.date >= minStr && e.date <= dateToKey(new Date()))
-                    .sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0))
-                    .slice(0, 10);
-                  if (recentEntries.length === 0) return null;
-                  return (
-                    <div>
-                      <p className={`text-sm font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{t.useExistingTime}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {recentEntries.map((entry) => {
-                          const [y, mo, day] = entry.date.split('-').map(Number);
-                          const dateLabel = lang === 'pt' ? `${day}/${mo}` : `${mo}/${day}`;
-                          return (
-                            <button
-                              key={`${entry.date}-${entry.startTime}`}
-                              type="button"
-                              onClick={() => {
-                                setPastStartDate(entry.date);
-                                setPastStartTime(entry.startTime);
-                              }}
-                              className={`px-3 py-1.5 rounded-lg text-sm font-mono transition-colors ${
-                                pastStartDate === entry.date && pastStartTime === entry.startTime
-                                  ? 'bg-brand-500 text-white'
-                                  : isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-                              }`}
-                            >
-                              {dateLabel} {entry.startTime}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()}
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                     {t.timeLabel}
