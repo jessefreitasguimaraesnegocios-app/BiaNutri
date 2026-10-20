@@ -564,7 +564,7 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
   };
 
   const handleCustomHoursChange = (v: number) => {
-    const horas = Math.min(24, Math.max(0.5, v));
+    const horas = Math.min(5 * 24, Math.max(0.5, v));
     setCustomHours(horas);
     setEndTime(suggestedEndTime(startTime, horas));
   };
@@ -601,7 +601,7 @@ const FastingSlide: React.FC<FastingSlideProps> = ({ userId, theme, lang }) => {
     if (!currentFast) return;
     const plannedHours =
       newCycle === 'custom'
-        ? customHoursValue ?? switchCustomHours
+        ? Math.min(5 * 24, Math.max(0.5, customHoursValue ?? switchCustomHours))
         : CYCLES.find((c) => c.id === newCycle)?.hours ?? currentFast.plannedHours;
     const updated: CurrentFast = {
       startTimestamp: currentFast.startTimestamp,

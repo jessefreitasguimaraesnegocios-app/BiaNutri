@@ -44,10 +44,19 @@ interface FastingCyclePickerProps {
   };
 }
 
+/** Personalizado: mínimo 30 min, máximo 5 dias (120h). */
+const HORAS_MIN_PERSONALIZADO = 0.5;
+const HORAS_MAX_PERSONALIZADO = 5 * 24;
+
+function limitarHorasPersonalizado(horas: number): number {
+  return Math.min(HORAS_MAX_PERSONALIZADO, Math.max(HORAS_MIN_PERSONALIZADO, Math.round(horas * 100) / 100));
+}
+
 function lerHorasDigitadas(bruto: string): number | null {
   const limpo = bruto.trim().replace(',', '.');
   if (limpo === '' || limpo === '.' || limpo === ':') return null;
-  const comDoisPontos = limpo.match(/^(\d{1,2}):(\d{1,2})$/);
+  // Aceita até 120:00 (5 dias em horas:minutos)
+  const comDoisPontos = limpo.match(/^(\d{1,3}):(\d{1,2})$/);
   if (comDoisPontos) {
     const horas = Number(comDoisPontos[1]);
     const minutos = Number(comDoisPontos[2]);
@@ -81,7 +90,7 @@ function CampoHorasEditavel({
       setTexto(String(valor));
       return;
     }
-    const limitado = Math.min(24, Math.max(0.5, Math.round(num * 100) / 100));
+    const limitado = limitarHorasPersonalizado(num);
     setTexto(String(limitado));
     onChange(limitado);
   };
@@ -90,15 +99,36 @@ function CampoHorasEditavel({
     <input
       type="text"
       inputMode="decimal"
+      maxLength={6}
       value={texto}
       onChange={(e) => {
-        const proximo = e.target.value.replace(/[^\d.,:]/g, '');
-        setTexto(proximo);
-        // Com ":" só aplica no blur, para não trocar 5:40 por 5.67 no meio da digitação
-        if (proximo.includes(':')) return;
-        if (proximo === '' || proximo === '.' || proximo === ',') return;
+        let proximo = e.target.value.replace(/[^\d.,:]/g, '');
+        if (proximo.includes(':')) {
+          // Limita digitação tipo 120:59
+          const partes = proximo.split(':');
+          const h = (partes[0] ?? '').slice(0, 3);
+          const m = (partes[1] ?? '').slice(0, 2);
+          proximo = partes.length > 1 ? `${h}:${m}` : h.includes(':') ? h : `${h}:`;
+          if (Number(h) > HORAS_MAX_PERSONALIZADO) {
+            setTexto(String(HORAS_MAX_PERSONALIZADO));
+            onChange(HORAS_MAX_PERSONALIZADO);
+            return;
+          }
+          setTexto(proximo);
+          return;
+        }
+        if (proximo === '' || proximo === '.' || proximo === ',') {
+          setTexto(proximo);
+          return;
+        }
         const num = lerHorasDigitadas(proximo);
-        if (num != null && num >= 0.5 && num <= 24) onChange(Math.round(num * 100) / 100);
+        if (num != null && num > HORAS_MAX_PERSONALIZADO) {
+          setTexto(String(HORAS_MAX_PERSONALIZADO));
+          onChange(HORAS_MAX_PERSONALIZADO);
+          return;
+        }
+        setTexto(proximo);
+        if (num != null && num >= HORAS_MIN_PERSONALIZADO) onChange(Math.round(num * 100) / 100);
       }}
       onBlur={() => aplicar(texto)}
       className={
@@ -181,19 +211,24 @@ const FastingCyclePicker: React.FC<FastingCyclePickerProps> = ({
             })}
           </div>
           {showCustomCycleInput && (
-            <div className="flex gap-2 items-center mt-4">
-              <CampoHorasEditavel
-                valor={switchCustomHours}
-                onChange={setSwitchCustomHours}
-                isDark={isDark}
-              />
-              <span className="text-sm text-slate-500">{t.hours}</span>
-              <button
-                onClick={() => onCycleChangeActive('custom', switchCustomHours)}
-                className="px-5 py-3 rounded-xl font-bold text-sm bg-brand-500 text-white hover:bg-brand-600"
-              >
-                {t.apply}
-              </button>
+            <div className="mt-4 space-y-2">
+              <div className="flex gap-2 items-center">
+                <CampoHorasEditavel
+                  valor={switchCustomHours}
+                  onChange={setSwitchCustomHours}
+                  isDark={isDark}
+                />
+                <span className="text-sm text-slate-500">{t.hours}</span>
+                <button
+                  onClick={() => onCycleChangeActive('custom', limitarHorasPersonalizado(switchCustomHours))}
+                  className="px-5 py-3 rounded-xl font-bold text-sm bg-brand-500 text-white hover:bg-brand-600"
+                >
+                  {t.apply}
+                </button>
+              </div>
+              <p className="text-xs text-slate-500">
+                {lang === 'pt' ? 'Máx. 5 dias (120h). Ex.: 5:40 ou 120' : 'Max 5 days (120h). Ex.: 5:40 or 120'}
+              </p>
             </div>
           )}
         </div>
@@ -244,16 +279,21 @@ const FastingCyclePicker: React.FC<FastingCyclePickerProps> = ({
         <div className="space-y-1">
           <label className="text-xs font-bold uppercase text-slate-500">{t.end}</label>
           {cycle === 'custom' ? (
-            <div className="flex gap-2 items-center">
-              <CampoHorasEditavel
-                valor={customHours}
-                onChange={onCustomHoursChange}
-                isDark={isDark}
-                classe={`w-full p-3 rounded-xl font-mono text-lg border-0 ${
-                  isDark ? 'bg-slate-800 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-900'
-                }`}
-              />
-              <span className="text-sm text-slate-500 shrink-0">{t.hours}</span>
+            <div className="space-y-1">
+              <div className="flex gap-2 items-center">
+                <CampoHorasEditavel
+                  valor={customHours}
+                  onChange={onCustomHoursChange}
+                  isDark={isDark}
+                  classe={`w-full p-3 rounded-xl font-mono text-lg border-0 ${
+                    isDark ? 'bg-slate-800 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-900'
+                  }`}
+                />
+                <span className="text-sm text-slate-500 shrink-0">{t.hours}</span>
+              </div>
+              <p className="text-[10px] text-slate-500">
+                {lang === 'pt' ? 'Máx. 5 dias (120h)' : 'Max 5 days (120h)'}
+              </p>
             </div>
           ) : (
             <input
